@@ -1,0 +1,231 @@
+{
+  "name": "ghia-ai",
+  "displayName": "ghia-ai",
+  "version": "0.1.3",
+  "description": "Dumb down confusing code with AI-powered explanations. Click, read, understand—no more head-scratching over cryptic functions.",
+  "publisher": "andremerten",
+  "license": "MIT",
+  "engines": {
+    "node": "24.14.0",
+    "vscode": "^1.85.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andremerten/ghia-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andremerten/ghia-ai/issues"
+  },
+  "homepage": "https://github.com/andremerten/ghia-ai#readme",
+  "icon": "icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "categories": [
+    "Programming Languages",
+    "Machine Learning",
+    "Other"
+  ],
+  "scripts": {
+    "build": "node esbuild.config.js",
+    "watch": "node esbuild.config.js --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "vsce package",
+    "validate": "node validate.js"
+  },
+  "dependencies": {
+    "@ghia-ai/shared": "file:../shared",
+    "ai": "^6.0.116",
+    "undici": "^7.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.110.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.27.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "ghia-ai.explainCode",
+        "title": "ghia-ai: Explain Selected Code"
+      },
+      {
+        "command": "ghia-ai.retryHoverExplanation",
+        "title": "ghia-ai: Retry Hover Explanation"
+      },
+      {
+        "command": "ghia-ai.statusBarClick",
+        "title": "ghia-ai: Show Menu"
+      },
+      {
+        "command": "ghia-ai.prototype.selectMode",
+        "title": "ghia-ai: Select UI Mode"
+      },
+      {
+        "command": "ghia-ai.quickPeek",
+        "title": "ghia-ai: Quick Peek Explanation"
+      },
+      {
+        "command": "ghia-ai.inlinePeek",
+        "title": "ghia-ai: Inline Peek Explanation"
+      },
+      {
+        "command": "ghia-ai.explainInPanel",
+        "title": "ghia-ai: Explain in Side Panel"
+      },
+      {
+        "command": "ghia-ai.explainFloating",
+        "title": "ghia-ai: Explain in Floating Panel"
+      },
+      {
+        "command": "ghia-ai.prototype.toggleCodeLens",
+        "title": "ghia-ai: Toggle CodeLens Annotations"
+      },
+      {
+        "command": "ghia-ai.experiment.menu",
+        "title": "ghia-ai: Hover Experiments Menu"
+      },
+      {
+        "command": "ghia-ai.experiment.stop",
+        "title": "ghia-ai: Stop Hover Experiment"
+      },
+      {
+        "command": "ghia-ai.experiment.status",
+        "title": "ghia-ai: Show Experiment Status"
+      },
+      {
+        "command": "ghia-ai.experiment.run.null-returning",
+        "title": "ghia-ai: Run Experiment - Null Returning"
+      },
+      {
+        "command": "ghia-ai.experiment.run.always-return",
+        "title": "ghia-ai: Run Experiment - Always Return Hover"
+      },
+      {
+        "command": "ghia-ai.experiment.run.conditional",
+        "title": "ghia-ai: Run Experiment - Conditional Hover"
+      },
+      {
+        "command": "ghia-ai.experiment.run.multi-provider",
+        "title": "ghia-ai: Run Experiment - Multi Provider"
+      },
+      {
+        "command": "ghia-ai.experiment.run.registration-order-high-first",
+        "title": "ghia-ai: Run Experiment - Registration Order (High First)"
+      },
+      {
+        "command": "ghia-ai.experiment.run.registration-order-high-last",
+        "title": "ghia-ai: Run Experiment - Registration Order (High Last)"
+      },
+      {
+        "command": "ghia-ai.experiment.run.registration-order-first-second-high",
+        "title": "ghia-ai: Run Experiment - Registration Order (Mixed)"
+      },
+      {
+        "command": "ghia-ai.experiment.run.async",
+        "title": "ghia-ai: Run Experiment - Async Provider"
+      },
+      {
+        "command": "ghia-ai.experiment.run.undefined",
+        "title": "ghia-ai: Run Experiment - Undefined Return"
+      },
+      {
+        "command": "ghia-ai.experiment.run.empty-content",
+        "title": "ghia-ai: Run Experiment - Empty Content"
+      },
+      {
+        "command": "ghia-ai.askAI",
+        "title": "ghia-ai: Ask Local Model"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "ghia-ai.explanationPanel",
+          "name": "ghia-ai",
+          "when": "codelensAI.prototype.sidePanelEnabled"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "ghia-ai.quickPeek",
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "ghia-ai.explainInPanel",
+        "key": "ctrl+shift+alt+e",
+        "mac": "cmd+shift+alt+e",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "ghia-ai",
+      "properties": {
+        "codelensAI.ollamaEndpoint": {
+          "type": "string",
+          "default": "http://89.116.212.35:11434",
+          "description": "Ollama API endpoint URL."
+        },
+        "codelensAI.model": {
+          "type": "string",
+          "default": "gemma3:1b",
+          "description": "Model name to use for explanations."
+        },
+        "codelensAI.highlightColor": {
+          "type": "string",
+          "default": "",
+          "description": "Background color for the hover-highlighted code block (e.g. \"rgba(0, 128, 128, 0.2)\"). Leave empty to use theme-aware defaults (dark: teal 15%, light: teal 25%, high-contrast: white 10%)."
+        },
+        "codelensAI.enableExperiments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable experimental hover provider testing module. Only enable for development/testing purposes."
+        },
+        "codelensAI.prototype.mode": {
+          "type": "string",
+          "enum": [
+            "hover",
+            "codelens",
+            "peek",
+            "quickpeek",
+            "inlinepeek",
+            "sidepanel",
+            "floatingpanel",
+            "hybrid"
+          ],
+          "default": "hybrid",
+          "enumDescriptions": [
+            "Original hover tooltips (merged with VS Code hovers)",
+            "Inline clickable annotations above code constructs",
+            "Peek definition-style overlay using virtual documents",
+            "Fast modal explanation using Quick Pick",
+            "Inline decoration below the hovered line",
+            "Persistent sidebar webview with history",
+            "Floating webview panel beside the editor",
+            "Combination of CodeLens + Side Panel"
+          ],
+          "description": "UI mode for displaying AI explanations. Each mode offers different trade-offs."
+        },
+        "codelensAI.prototype.sidePanelEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the ghia-ai panel in the Explorer sidebar."
+        },
+        "codelensAI.prototype.enablePrototypes": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable UI prototype alternatives (CodeLens, Peek View, Side Panel). Set to false to disable alternative UI modes."
+        }
+      }
+    }
+  }
+}
