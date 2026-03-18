@@ -54,7 +54,9 @@ export class AIService {
         : DEFAULT_MODEL;
     return {
       model,
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://89.116.212.35:11434",
+      // Default to the local Ollama instance, which is the expected setup for the
+      // extension. Users can override via `ghiaAI.ollamaEndpoint` in settings.
+      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434",
     };
   }
 

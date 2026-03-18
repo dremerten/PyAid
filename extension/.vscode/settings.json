@@ -1,5 +1,0 @@
-{
-  "ghiaAI.provider": "ollama",
-  "ghiaAI.ollamaEndpoint": "http://89.116.212.35:11434",
-  "ghiaAI.model": "gemma3:1b"
-}

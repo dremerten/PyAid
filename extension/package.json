@@ -180,7 +180,7 @@
       "properties": {
         "ghiaAI.ollamaEndpoint": {
           "type": "string",
-          "default": "http://89.116.212.35:11434",
+          "default": "http://127.0.0.1:11434",
           "description": "Ollama API endpoint URL."
         },
         "ghiaAI.model": {
