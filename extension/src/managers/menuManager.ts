@@ -53,7 +53,8 @@ export class MenuManager {
         : DEFAULT_MODEL;
     return {
       model,
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://89.116.212.35:11434",
+      // Default to local Ollama; users can override in settings if remote.
+      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434",
     };
   }
 

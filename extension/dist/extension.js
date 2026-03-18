@@ -24814,7 +24814,9 @@ var AIService = class {
     const model = typeof modelFromConfig === "string" && modelFromConfig.trim() ? modelFromConfig : DEFAULT_MODEL;
     return {
       model,
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://89.116.212.35:11434"
+      // Default to the local Ollama instance, which is the expected setup for the
+      // extension. Users can override via `ghiaAI.ollamaEndpoint` in settings.
+      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434"
     };
   }
   /**
@@ -26360,7 +26362,8 @@ var MenuManager = class {
     const model = typeof modelFromConfig === "string" && modelFromConfig.trim() ? modelFromConfig : DEFAULT_MODEL2;
     return {
       model,
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://89.116.212.35:11434"
+      // Default to local Ollama; users can override in settings if remote.
+      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434"
     };
   }
   /**
