@@ -58,6 +58,7 @@ export class SidePanelProvider
   private conversation: ConversationEntry[] = [];
   private disposables: vscode.Disposable[] = [];
   private askInFlight = false;
+  private pythonFocus = true;
 
   // Track current explanation being displayed with full context for refresh
   private currentExplanation: {
@@ -81,6 +82,9 @@ export class SidePanelProvider
       enableScripts: true,
       localResourceRoots: [this.extensionUri],
     };
+
+    const config = vscode.workspace.getConfiguration("ghiaAI");
+    this.pythonFocus = config.get("askPythonMode", true);
 
     webviewView.webview.html = this.getHtml();
 
@@ -115,6 +119,9 @@ export class SidePanelProvider
               includeSelection: Boolean(message.includeSelection),
               includeFile: Boolean(message.includeFile),
             });
+            break;
+          case "toggleScope":
+            await this.toggleScope();
             break;
         }
       },
@@ -363,7 +370,12 @@ export class SidePanelProvider
     this.updateView();
 
     try {
-      const answer = await this.aiService.ask(trimmed, contextInfo);
+      const answer = await this.aiService.ask(
+        trimmed,
+        contextInfo,
+        undefined,
+        this.pythonFocus
+      );
       this.replaceConversationEntry(assistantPlaceholder.id, {
         ...assistantPlaceholder,
         content: answer,
@@ -427,6 +439,7 @@ export class SidePanelProvider
         conversation: this.conversation,
         contextHints: this.getContextHints(),
         busy: this.currentExplanation?.isLoading || this.askInFlight,
+        pythonFocus: this.pythonFocus,
       });
     }
   }
@@ -506,6 +519,7 @@ export class SidePanelProvider
       --accent: var(--vscode-textLink-foreground);
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       padding: 12px;
@@ -514,14 +528,19 @@ export class SidePanelProvider
       color: var(--vscode-foreground);
       background: var(--surface);
       line-height: 1.5;
+      overflow-y: auto;
     }
     .panel {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      height: 100vh;
+      min-height: 100%;
+      padding-bottom: 12px;
     }
     .header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -548,7 +567,7 @@ export class SidePanelProvider
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
-    .header-actions { display: flex; gap: 6px; }
+    .header-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .btn {
       border: 1px solid var(--border);
       background: var(--card);
@@ -642,6 +661,13 @@ export class SidePanelProvider
     .composer-row { display: flex; gap: 8px; align-items: flex-start; }
     .composer-row button { height: 38px; }
     .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .scope-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
     .chip {
       display: inline-flex;
       align-items: center;
@@ -693,8 +719,14 @@ export class SidePanelProvider
 
     <div class="section">
       <div class="section-title">
-        <span>Ask Anything</span>
-        <span class="muted" id="busy-indicator"></span>
+      <span>Ask Anything</span>
+      <span class="muted" id="busy-indicator"></span>
+    </div>
+      <div class="scope-row">
+        <button class="btn ghost" id="scope-toggle-inline" onclick="toggleScope()" aria-pressed="true">
+          Python focus: On
+        </button>
+        <span class="hint">Python-heavy answers when on; general answers when off.</span>
       </div>
       <form id="composer" class="composer">
         <div class="chips">
@@ -725,6 +757,10 @@ export class SidePanelProvider
   <script>
     const vscode = acquireVsCodeApi();
     let latestContextHints = { hasSelection: false, selectionLabel: null, hasFile: false, fileName: null };
+    let latestConversation = [];
+    let thinkTimer = null;
+    let thinkingIndex = 0;
+    const thinkingEmojis = ["🤔", "🌀", "💭", "✨", "⌛"];
 
     document.getElementById('composer').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -740,6 +776,7 @@ export class SidePanelProvider
     function refreshExplanation() { vscode.postMessage({ command: 'refresh' }); }
     function loadHistory(id) { vscode.postMessage({ command: 'loadHistory', id }); }
     function clearHistory() { vscode.postMessage({ command: 'clearHistory' }); }
+    function toggleScope() { vscode.postMessage({ command: 'toggleScope' }); }
     function toggleHistory() {
       const section = document.getElementById('history-section');
       section.classList.toggle('open');
@@ -794,6 +831,7 @@ export class SidePanelProvider
     }
 
     function renderConversation(conversation) {
+      latestConversation = conversation || [];
       const stream = document.getElementById('chat-stream');
       if (!conversation || conversation.length === 0) {
         stream.innerHTML = '<div class="empty">No chat yet. Ask a question or explain a selection to start a thread.</div>';
@@ -801,11 +839,14 @@ export class SidePanelProvider
       }
       stream.innerHTML = conversation.map(entry => {
         const meta = \`\${entry.kind === 'ask' ? 'Ask' : 'Explain'} • \${formatTime(entry.timestamp)}\`;
-        const status = entry.pending ? ' (thinking…)' : '';
+        const status = entry.pending
+          ? ' (' + thinkingEmojis[thinkingIndex % thinkingEmojis.length] + ' thinking…)'
+          : '';
+        const displayContent = entry.content;
         return \`
           <div class="bubble \${entry.role}">
             <div class="meta">\${meta}\${status}</div>
-            <div class="content">\${escapeHtml(entry.content)}</div>
+            <div class="content">\${escapeHtml(displayContent)}</div>
           </div>
         \`;
       }).join('');
@@ -844,6 +885,19 @@ export class SidePanelProvider
     function setBusy(isBusy) {
       document.getElementById('send-btn').disabled = isBusy;
       document.getElementById('busy-indicator').textContent = isBusy ? 'Working…' : '';
+      if (isBusy) {
+        startThinkCycle();
+      } else {
+        stopThinkCycle();
+      }
+    }
+
+    function setScope(pythonOn) {
+      const btn = document.getElementById('scope-toggle-inline');
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', pythonOn ? 'true' : 'false');
+      btn.textContent = pythonOn ? 'Python focus: On' : 'Python focus: Off';
+      btn.classList.toggle('primary', pythonOn);
     }
 
     window.addEventListener('message', event => {
@@ -854,11 +908,40 @@ export class SidePanelProvider
         renderHistory(message.history);
         renderContextHints(message.contextHints);
         setBusy(!!message.busy);
+        setScope(!!message.pythonFocus);
       }
     });
+
+    function startThinkCycle() {
+      if (thinkTimer) return;
+      thinkTimer = setInterval(() => {
+        thinkingIndex = (thinkingIndex + 1) % thinkingEmojis.length;
+        renderConversation(latestConversation);
+      }, 800);
+    }
+
+    function stopThinkCycle() {
+      if (thinkTimer) {
+        clearInterval(thinkTimer);
+        thinkTimer = null;
+      }
+      thinkingIndex = 0;
+    }
   </script>
 </body>
 </html>`;
+  }
+
+  /**
+   * Toggles Python-focused answers for free-form questions.
+   * Persists to user settings so it survives reloads.
+   */
+  private async toggleScope(): Promise<void> {
+    this.pythonFocus = !this.pythonFocus;
+    await vscode.workspace
+      .getConfiguration("ghiaAI")
+      .update("askPythonMode", this.pythonFocus, vscode.ConfigurationTarget.Global);
+    this.updateView();
   }
 
   dispose(): void {
@@ -880,6 +963,7 @@ export class FloatingPanelProvider implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
    // In-panel chat history for context across questions
   private conversation: { role: "user" | "assistant"; content: string }[] = [];
+  private pythonFocus = true;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -888,6 +972,8 @@ export class FloatingPanelProvider implements vscode.Disposable {
    * Useful for pre-opening the space before asking a question.
    */
   openPanel(): void {
+    const config = vscode.workspace.getConfiguration("ghiaAI");
+    this.pythonFocus = config.get("askPythonMode", true);
     this.ensurePanel();
     this.panel!.webview.html = this.getWelcomeHtml();
     this.evenEditorWidths();
@@ -993,6 +1079,8 @@ export class FloatingPanelProvider implements vscode.Disposable {
         } else if (message.command === "clear") {
           this.conversation = [];
           this.panel!.webview.html = this.renderChatHtml();
+        } else if (message.command === "toggleScope") {
+          await this.toggleScope();
         }
       },
       null,
@@ -1016,16 +1104,26 @@ export class FloatingPanelProvider implements vscode.Disposable {
     p { margin: 0 0 1rem; }
     code { background: var(--vscode-editorWidget-background); padding: 0.15rem 0.3rem; border-radius: 4px; }
     .chips { display: flex; gap: 8px; align-items: center; margin: 0 0 0.5rem; }
+    .scope-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0.5rem 0; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--vscode-input-border); background: var(--vscode-editorWidget-background); font-size: 12px; }
     textarea { width: 100%; box-sizing: border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 6px; padding: 8px; font-family: var(--vscode-editor-font-family); resize: vertical; }
     button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 1px solid var(--vscode-button-border); padding: 8px 12px; border-radius: 6px; cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
     .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .btn { border: 1px solid var(--vscode-button-border); background: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background)); color: var(--vscode-button-foreground); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    .btn.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+    .btn.ghost { background: var(--vscode-editorWidget-background); }
   </style>
 </head>
 <body>
   <h1>🧠 ghia-ai</h1>
   <p>Ask a question or select code, then click Send.</p>
+  <div class="scope-row">
+    <button class="btn ghost" id="scope-toggle-inline" aria-pressed="${this.pythonFocus ? "true" : "false"}">
+      ${this.pythonFocus ? "Python focus: On" : "Python focus: Off"}
+    </button>
+    <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Python-heavy answers when on; general answers when off.</span>
+  </div>
   <form id="ask-form">
     <div class="chips">
       <label class="chip"><input type="checkbox" id="include-selection" checked> Selection</label>
@@ -1040,6 +1138,7 @@ export class FloatingPanelProvider implements vscode.Disposable {
 
   <script>
     const vscode = acquireVsCodeApi();
+    document.getElementById('scope-toggle-inline')?.addEventListener('click', () => vscode.postMessage({ command: 'toggleScope' }));
     document.getElementById('ask-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const text = document.getElementById('ask-input').value;
@@ -1061,7 +1160,7 @@ export class FloatingPanelProvider implements vscode.Disposable {
       .join("");
 
     const typingHtml = showTyping
-      ? `<div class="typing">Thinking ${this.randomEmoji()}</div>`
+      ? `<div class="typing" id="typing-text">🤔 thinking…</div>`
       : "";
 
     return `<!DOCTYPE html>
@@ -1078,6 +1177,7 @@ export class FloatingPanelProvider implements vscode.Disposable {
     .composer { display:flex; flex-direction:column; gap:8px; }
     .chips { display:flex; gap:8px; flex-wrap:wrap; }
     .chip { display:inline-flex; gap:6px; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--vscode-input-border); background: var(--vscode-editorWidget-background); font-size:12px; }
+    .scope-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
     textarea { width:100%; box-sizing:border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border:1px solid var(--vscode-input-border); border-radius:6px; padding:8px; font-family: var(--vscode-editor-font-family); }
     button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border:1px solid var(--vscode-button-border); padding:8px 12px; border-radius:6px; cursor:pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
@@ -1088,6 +1188,12 @@ export class FloatingPanelProvider implements vscode.Disposable {
   <h1>🧠 ghia-ai</h1>
   <div class="chat" id="chat">${messagesHtml}${typingHtml}</div>
   <form id="ask-form" class="composer">
+    <div class="scope-row">
+      <button class="btn ghost" id="scope-toggle-inline" aria-pressed="${this.pythonFocus ? "true" : "false"}">
+        ${this.pythonFocus ? "Python focus: On" : "Python focus: Off"}
+      </button>
+      <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Python-heavy answers when on; general answers when off.</span>
+    </div>
     <div class="chips">
       <label class="chip"><input type="checkbox" id="include-selection" checked> Selection</label>
       <label class="chip"><input type="checkbox" id="include-file" checked> Current file</label>
@@ -1101,6 +1207,9 @@ export class FloatingPanelProvider implements vscode.Disposable {
 
   <script>
     const vscode = acquireVsCodeApi();
+    const thinkingEmojis = ["🤔", "🌀", "💭", "✨", "⌛"];
+    let emojiIndex = 0;
+    document.getElementById('scope-toggle-inline')?.addEventListener('click', () => vscode.postMessage({ command: 'toggleScope' }));
     const form = document.getElementById('ask-form');
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -1113,6 +1222,15 @@ export class FloatingPanelProvider implements vscode.Disposable {
     document.getElementById('clear-btn').addEventListener('click', () => {
       vscode.postMessage({ command: 'clear' });
     });
+
+    // Animate typing placeholder with rotating emojis while thinking
+    const typingEl = document.getElementById('typing-text');
+    if (typingEl) {
+      setInterval(() => {
+        emojiIndex = (emojiIndex + 1) % thinkingEmojis.length;
+        typingEl.textContent = thinkingEmojis[emojiIndex] + ' thinking…';
+      }, 800);
+    }
   </script>
 </body>
 </html>`;
@@ -1168,7 +1286,9 @@ export class FloatingPanelProvider implements vscode.Disposable {
       const historyContext = this.buildHistoryContext();
       const answer = await this.aiService.ask(
         `${historyContext}\nCurrent question: ${augmentedQuestion}`,
-        contextInfo
+        contextInfo,
+        undefined,
+        this.pythonFocus
       );
       // replace placeholder
       if (
@@ -1412,6 +1532,19 @@ export class FloatingPanelProvider implements vscode.Disposable {
     // Reinsert code blocks
     html = html.replace(/__CODE_BLOCK_(\d+)__/g, (_m, i) => codeBlocks[Number(i)] ?? "");
     return html;
+  }
+
+  /**
+   * Toggles Python-focused answers for free-form questions in floating panel.
+   */
+  private async toggleScope(): Promise<void> {
+    this.pythonFocus = !this.pythonFocus;
+    await vscode.workspace
+      .getConfiguration("ghiaAI")
+      .update("askPythonMode", this.pythonFocus, vscode.ConfigurationTarget.Global);
+    if (this.panel) {
+      this.panel.webview.html = this.renderChatHtml();
+    }
   }
 
   dispose(): void {

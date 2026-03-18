@@ -24787,7 +24787,8 @@ var vscode3 = __toESM(require("vscode"));
 // src/services/aiService.ts
 var vscode = __toESM(require("vscode"));
 var import_undici = __toESM(require_undici());
-var DEFAULT_MODEL = "gemma3:1b";
+var DEFAULT_MODEL = "codegemma:2b";
+var DEFAULT_ENDPOINT = "http://89.116.212.35:11434";
 var AI_REQUEST_TIMEOUT_MS = 3e5;
 function createAbortSignalWithTimeout(token) {
   const controller = new AbortController();
@@ -24816,7 +24817,7 @@ var AIService = class {
       model,
       // Default to the local Ollama instance, which is the expected setup for the
       // extension. Users can override via `ghiaAI.ollamaEndpoint` in settings.
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434"
+      ollamaEndpoint: config.get("ollamaEndpoint") ?? DEFAULT_ENDPOINT
     };
   }
   /**
@@ -24834,6 +24835,17 @@ var AIService = class {
       cleanup();
       return result + this.formatDuration(started);
     } catch (err) {
+      if (this.isLocalEndpoint(cfg.ollamaEndpoint)) {
+        const fallback = await this.tryFallbackEndpoint(
+          prompt,
+          cfg.model,
+          cancellationToken
+        );
+        if (fallback) {
+          cleanup();
+          return fallback + this.formatDuration(started);
+        }
+      }
       const missingModelName = this.getMissingModelName(err);
       if (missingModelName) {
         try {
@@ -24858,7 +24870,7 @@ var AIService = class {
       if (this.isAbortError(err)) {
         return "Request was cancelled.";
       }
-      const message = `${this.analyzeError(err)} (model tried: ${model}, endpoint: ${cfg.ollamaEndpoint})`;
+      const message = `${this.analyzeError(err)} (model tried: ${model}, endpoint: ${this.maskEndpoint(cfg.ollamaEndpoint)})`;
       console.error("[ghia-ai]", err);
       throw new Error(message);
     }
@@ -24866,7 +24878,7 @@ var AIService = class {
   /**
    * General-purpose ask endpoint: asks the model about any topic (no code extraction needed).
    */
-  async ask(question, contextInfo, cancellationToken) {
+  async ask(question, contextInfo, cancellationToken, pythonFocus = true) {
     const cfg = this.getConfig();
     const contextBlock = contextInfo?.content && contextInfo.content.trim().length > 0 ? `
 
@@ -24874,7 +24886,11 @@ The user is asking about the *current file* (${contextInfo.languageId ?? "unknow
 \`\`\`
 ${contextInfo.content}
 \`\`\`` : "";
-    const prompt = `Explain the following concept for a Python 3 developer. Provide 2-3 concise Python 3 examples in fenced code blocks. Be clear and focused.
+    const prompt = pythonFocus ? `Answer with moderate detail: 2\u20135 sentences, then up to 3 tight bullets. Include 1\u20132 compact Python 3 code blocks only if they help understanding.
+
+Question:
+${question}
+${contextBlock}` : `Answer with moderate detail: 2\u20135 sentences, then up to 3 tight bullets. Use code only if the user explicitly asked for it.
 
 Question:
 ${question}
@@ -24888,8 +24904,18 @@ ${contextBlock}`;
       return result + this.formatDuration(started);
     } catch (err) {
       cleanup();
+      if (this.isLocalEndpoint(cfg.ollamaEndpoint)) {
+        const fallback = await this.tryFallbackEndpoint(
+          prompt,
+          cfg.model,
+          cancellationToken
+        );
+        if (fallback) {
+          return fallback + this.formatDuration(started);
+        }
+      }
       const message = this.analyzeError(err);
-      throw new Error(`${message} (model tried: ${model}, endpoint: ${cfg.ollamaEndpoint})`);
+      throw new Error(`${message} (model tried: ${model}, endpoint: ${this.maskEndpoint(cfg.ollamaEndpoint)})`);
     }
   }
   formatDuration(started) {
@@ -24898,6 +24924,26 @@ ${contextBlock}`;
     return `
 
 _Time: ${s}s_`;
+  }
+  /**
+   * Masks an endpoint so user-facing errors don't leak the full host/IP.
+   */
+  maskEndpoint(endpoint) {
+    try {
+      const url = new URL(endpoint);
+      const host = url.hostname;
+      if (host === "localhost" || host.startsWith("127.")) return "local";
+      const parts = host.split(".");
+      if (parts.length >= 4) {
+        return `${parts[0]}.***.***.${parts[parts.length - 1]}`;
+      }
+      if (parts.length >= 2) {
+        return `***.${parts[parts.length - 1]}`;
+      }
+      return "[configured endpoint]";
+    } catch {
+      return "[configured endpoint]";
+    }
   }
   /**
    * Returns the model name from a 404 "model not found" error, if present.
@@ -24966,6 +25012,33 @@ _Time: ${s}s_`;
       return true;
     }
     return false;
+  }
+  isLocalEndpoint(endpoint) {
+    try {
+      const host = new URL(endpoint).hostname;
+      return host === "localhost" || host.startsWith("127.");
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Retry once against the bundled DEFAULT_ENDPOINT when the current endpoint
+   * looks local and the original call failed to connect.
+   */
+  async tryFallbackEndpoint(prompt, preferredModel, cancellationToken) {
+    const { signal, cleanup } = createAbortSignalWithTimeout(cancellationToken);
+    try {
+      const model = await this.resolveModel(
+        preferredModel,
+        DEFAULT_ENDPOINT,
+        signal
+      );
+      return await this.callOllama(prompt, model, DEFAULT_ENDPOINT, signal);
+    } catch {
+      return null;
+    } finally {
+      cleanup();
+    }
   }
   /**
    * Classifies the error and returns a user-friendly message using
@@ -25036,30 +25109,26 @@ File structure (outline of top-level declarations in this file):
 ${options.fileStructure.trim()}
 \`\`\`` : "";
     if (options?.detailLevel === "detailed") {
-      return `Explain the following ${lang} code in detail for a developer who wants to understand it deeply.
+      return `Explain the following ${lang} code with moderate detail.
 
-Your explanation should include:
-- **What**: Clear description of what the code does (2\u20133 sentences)
-- **Why**: Purpose and rationale; why it might be written this way
-- **Step-by-step**: How the code achieves its goal (key steps or control flow)
-- **Patterns & techniques**: Notable patterns, conventions, or language features used
-- **Edge cases / caveats**: Any gotchas, assumptions, or things to watch for
-- **Context**: How this fits with the surrounding code or file structure (use the file outline if provided)
+Output format:
+- 2\u20135 sentence summary.
+- Up to 4 short bullets: purpose, key flow, notable patterns, critical edge cases.
+- If file outline is provided, use it for context.
 
-Be thorough but organized. Use short paragraphs or bullet points. Do not repeat the code verbatim.
+Keep it crisp; no code repetition.
 
 \`\`\`${lang}
 ${code}
 \`\`\`${contextBlock}${fileStructureBlock}`;
     }
-    return `Explain the following ${lang} code concisely.
+    return `Explain the following ${lang} code with moderate detail.
 
-Your explanation should:
-- What: Describe what the code does in 1-2 sentences
-- Why: Explain why it might exist or its purpose
-- Patterns: Note any notable patterns or techniques used
+Output format:
+- 2\u20135 sentence summary.
+- Up to 3 bullets: what it does, why it exists, notable pattern/gotcha, edge cases if critical.
 
-Keep your explanation brief but insightful. Do not repeat the code back.
+Keep it tight; no code repetition.
 
 \`\`\`${lang}
 ${code}
@@ -27137,6 +27206,7 @@ var SidePanelProvider = class {
   conversation = [];
   disposables = [];
   askInFlight = false;
+  pythonFocus = true;
   // Track current explanation being displayed with full context for refresh
   currentExplanation = null;
   resolveWebviewView(webviewView, _context, _token) {
@@ -27145,6 +27215,8 @@ var SidePanelProvider = class {
       enableScripts: true,
       localResourceRoots: [this.extensionUri]
     };
+    const config = vscode9.workspace.getConfiguration("ghiaAI");
+    this.pythonFocus = config.get("askPythonMode", true);
     webviewView.webview.html = this.getHtml();
     webviewView.webview.onDidReceiveMessage(
       async (message) => {
@@ -27176,6 +27248,9 @@ var SidePanelProvider = class {
               includeSelection: Boolean(message.includeSelection),
               includeFile: Boolean(message.includeFile)
             });
+            break;
+          case "toggleScope":
+            await this.toggleScope();
             break;
         }
       },
@@ -27364,7 +27439,12 @@ var SidePanelProvider = class {
     this.askInFlight = true;
     this.updateView();
     try {
-      const answer = await this.aiService.ask(trimmed, contextInfo);
+      const answer = await this.aiService.ask(
+        trimmed,
+        contextInfo,
+        void 0,
+        this.pythonFocus
+      );
       this.replaceConversationEntry(assistantPlaceholder.id, {
         ...assistantPlaceholder,
         content: answer,
@@ -27424,7 +27504,8 @@ var SidePanelProvider = class {
         history: this.history.slice(0, 10),
         conversation: this.conversation,
         contextHints: this.getContextHints(),
-        busy: this.currentExplanation?.isLoading || this.askInFlight
+        busy: this.currentExplanation?.isLoading || this.askInFlight,
+        pythonFocus: this.pythonFocus
       });
     }
   }
@@ -27485,6 +27566,7 @@ var SidePanelProvider = class {
       --accent: var(--vscode-textLink-foreground);
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       padding: 12px;
@@ -27493,14 +27575,19 @@ var SidePanelProvider = class {
       color: var(--vscode-foreground);
       background: var(--surface);
       line-height: 1.5;
+      overflow-y: auto;
     }
     .panel {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      height: 100vh;
+      min-height: 100%;
+      padding-bottom: 12px;
     }
     .header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -27527,7 +27614,7 @@ var SidePanelProvider = class {
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
-    .header-actions { display: flex; gap: 6px; }
+    .header-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .btn {
       border: 1px solid var(--border);
       background: var(--card);
@@ -27621,6 +27708,13 @@ var SidePanelProvider = class {
     .composer-row { display: flex; gap: 8px; align-items: flex-start; }
     .composer-row button { height: 38px; }
     .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .scope-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
     .chip {
       display: inline-flex;
       align-items: center;
@@ -27672,8 +27766,14 @@ var SidePanelProvider = class {
 
     <div class="section">
       <div class="section-title">
-        <span>Ask Anything</span>
-        <span class="muted" id="busy-indicator"></span>
+      <span>Ask Anything</span>
+      <span class="muted" id="busy-indicator"></span>
+    </div>
+      <div class="scope-row">
+        <button class="btn ghost" id="scope-toggle-inline" onclick="toggleScope()" aria-pressed="true">
+          Python focus: On
+        </button>
+        <span class="hint">Python-heavy answers when on; general answers when off.</span>
       </div>
       <form id="composer" class="composer">
         <div class="chips">
@@ -27704,6 +27804,10 @@ var SidePanelProvider = class {
   <script>
     const vscode = acquireVsCodeApi();
     let latestContextHints = { hasSelection: false, selectionLabel: null, hasFile: false, fileName: null };
+    let latestConversation = [];
+    let thinkTimer = null;
+    let thinkingIndex = 0;
+    const thinkingEmojis = ["\u{1F914}", "\u{1F300}", "\u{1F4AD}", "\u2728", "\u231B"];
 
     document.getElementById('composer').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -27719,6 +27823,7 @@ var SidePanelProvider = class {
     function refreshExplanation() { vscode.postMessage({ command: 'refresh' }); }
     function loadHistory(id) { vscode.postMessage({ command: 'loadHistory', id }); }
     function clearHistory() { vscode.postMessage({ command: 'clearHistory' }); }
+    function toggleScope() { vscode.postMessage({ command: 'toggleScope' }); }
     function toggleHistory() {
       const section = document.getElementById('history-section');
       section.classList.toggle('open');
@@ -27773,6 +27878,7 @@ var SidePanelProvider = class {
     }
 
     function renderConversation(conversation) {
+      latestConversation = conversation || [];
       const stream = document.getElementById('chat-stream');
       if (!conversation || conversation.length === 0) {
         stream.innerHTML = '<div class="empty">No chat yet. Ask a question or explain a selection to start a thread.</div>';
@@ -27780,11 +27886,14 @@ var SidePanelProvider = class {
       }
       stream.innerHTML = conversation.map(entry => {
         const meta = \`\${entry.kind === 'ask' ? 'Ask' : 'Explain'} \u2022 \${formatTime(entry.timestamp)}\`;
-        const status = entry.pending ? ' (thinking\u2026)' : '';
+        const status = entry.pending
+          ? ' (' + thinkingEmojis[thinkingIndex % thinkingEmojis.length] + ' thinking\u2026)'
+          : '';
+        const displayContent = entry.content;
         return \`
           <div class="bubble \${entry.role}">
             <div class="meta">\${meta}\${status}</div>
-            <div class="content">\${escapeHtml(entry.content)}</div>
+            <div class="content">\${escapeHtml(displayContent)}</div>
           </div>
         \`;
       }).join('');
@@ -27823,6 +27932,19 @@ var SidePanelProvider = class {
     function setBusy(isBusy) {
       document.getElementById('send-btn').disabled = isBusy;
       document.getElementById('busy-indicator').textContent = isBusy ? 'Working\u2026' : '';
+      if (isBusy) {
+        startThinkCycle();
+      } else {
+        stopThinkCycle();
+      }
+    }
+
+    function setScope(pythonOn) {
+      const btn = document.getElementById('scope-toggle-inline');
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', pythonOn ? 'true' : 'false');
+      btn.textContent = pythonOn ? 'Python focus: On' : 'Python focus: Off';
+      btn.classList.toggle('primary', pythonOn);
     }
 
     window.addEventListener('message', event => {
@@ -27833,11 +27955,37 @@ var SidePanelProvider = class {
         renderHistory(message.history);
         renderContextHints(message.contextHints);
         setBusy(!!message.busy);
+        setScope(!!message.pythonFocus);
       }
     });
+
+    function startThinkCycle() {
+      if (thinkTimer) return;
+      thinkTimer = setInterval(() => {
+        thinkingIndex = (thinkingIndex + 1) % thinkingEmojis.length;
+        renderConversation(latestConversation);
+      }, 800);
+    }
+
+    function stopThinkCycle() {
+      if (thinkTimer) {
+        clearInterval(thinkTimer);
+        thinkTimer = null;
+      }
+      thinkingIndex = 0;
+    }
   </script>
 </body>
 </html>`;
+  }
+  /**
+   * Toggles Python-focused answers for free-form questions.
+   * Persists to user settings so it survives reloads.
+   */
+  async toggleScope() {
+    this.pythonFocus = !this.pythonFocus;
+    await vscode9.workspace.getConfiguration("ghiaAI").update("askPythonMode", this.pythonFocus, vscode9.ConfigurationTarget.Global);
+    this.updateView();
   }
   dispose() {
     this.disposables.forEach((d) => d.dispose());
@@ -27854,11 +28002,14 @@ var FloatingPanelProvider = class {
   disposables = [];
   // In-panel chat history for context across questions
   conversation = [];
+  pythonFocus = true;
   /**
    * Opens an empty ghia-ai panel to the right, sized evenly with the editor.
    * Useful for pre-opening the space before asking a question.
    */
   openPanel() {
+    const config = vscode9.workspace.getConfiguration("ghiaAI");
+    this.pythonFocus = config.get("askPythonMode", true);
     this.ensurePanel();
     this.panel.webview.html = this.getWelcomeHtml();
     this.evenEditorWidths();
@@ -27945,6 +28096,8 @@ var FloatingPanelProvider = class {
         } else if (message.command === "clear") {
           this.conversation = [];
           this.panel.webview.html = this.renderChatHtml();
+        } else if (message.command === "toggleScope") {
+          await this.toggleScope();
         }
       },
       null,
@@ -27966,16 +28119,26 @@ var FloatingPanelProvider = class {
     p { margin: 0 0 1rem; }
     code { background: var(--vscode-editorWidget-background); padding: 0.15rem 0.3rem; border-radius: 4px; }
     .chips { display: flex; gap: 8px; align-items: center; margin: 0 0 0.5rem; }
+    .scope-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0.5rem 0; }
     .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--vscode-input-border); background: var(--vscode-editorWidget-background); font-size: 12px; }
     textarea { width: 100%; box-sizing: border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 6px; padding: 8px; font-family: var(--vscode-editor-font-family); resize: vertical; }
     button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 1px solid var(--vscode-button-border); padding: 8px 12px; border-radius: 6px; cursor: pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
     .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .btn { border: 1px solid var(--vscode-button-border); background: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background)); color: var(--vscode-button-foreground); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    .btn.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+    .btn.ghost { background: var(--vscode-editorWidget-background); }
   </style>
 </head>
 <body>
   <h1>\u{1F9E0} ghia-ai</h1>
   <p>Ask a question or select code, then click Send.</p>
+  <div class="scope-row">
+    <button class="btn ghost" id="scope-toggle-inline" aria-pressed="${this.pythonFocus ? "true" : "false"}">
+      ${this.pythonFocus ? "Python focus: On" : "Python focus: Off"}
+    </button>
+    <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Python-heavy answers when on; general answers when off.</span>
+  </div>
   <form id="ask-form">
     <div class="chips">
       <label class="chip"><input type="checkbox" id="include-selection" checked> Selection</label>
@@ -27990,6 +28153,7 @@ var FloatingPanelProvider = class {
 
   <script>
     const vscode = acquireVsCodeApi();
+    document.getElementById('scope-toggle-inline')?.addEventListener('click', () => vscode.postMessage({ command: 'toggleScope' }));
     document.getElementById('ask-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const text = document.getElementById('ask-input').value;
@@ -28006,7 +28170,7 @@ var FloatingPanelProvider = class {
       const cls = m.role === "user" ? "bubble user" : "bubble ai";
       return `<div class="${cls}">${this.markdownToHtml(m.content)}</div>`;
     }).join("");
-    const typingHtml = showTyping ? `<div class="typing">Thinking ${this.randomEmoji()}</div>` : "";
+    const typingHtml = showTyping ? `<div class="typing" id="typing-text">\u{1F914} thinking\u2026</div>` : "";
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -28021,6 +28185,7 @@ var FloatingPanelProvider = class {
     .composer { display:flex; flex-direction:column; gap:8px; }
     .chips { display:flex; gap:8px; flex-wrap:wrap; }
     .chip { display:inline-flex; gap:6px; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--vscode-input-border); background: var(--vscode-editorWidget-background); font-size:12px; }
+    .scope-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
     textarea { width:100%; box-sizing:border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border:1px solid var(--vscode-input-border); border-radius:6px; padding:8px; font-family: var(--vscode-editor-font-family); }
     button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border:1px solid var(--vscode-button-border); padding:8px 12px; border-radius:6px; cursor:pointer; }
     button:hover { background: var(--vscode-button-hoverBackground); }
@@ -28031,6 +28196,12 @@ var FloatingPanelProvider = class {
   <h1>\u{1F9E0} ghia-ai</h1>
   <div class="chat" id="chat">${messagesHtml}${typingHtml}</div>
   <form id="ask-form" class="composer">
+    <div class="scope-row">
+      <button class="btn ghost" id="scope-toggle-inline" aria-pressed="${this.pythonFocus ? "true" : "false"}">
+        ${this.pythonFocus ? "Python focus: On" : "Python focus: Off"}
+      </button>
+      <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Python-heavy answers when on; general answers when off.</span>
+    </div>
     <div class="chips">
       <label class="chip"><input type="checkbox" id="include-selection" checked> Selection</label>
       <label class="chip"><input type="checkbox" id="include-file" checked> Current file</label>
@@ -28044,6 +28215,9 @@ var FloatingPanelProvider = class {
 
   <script>
     const vscode = acquireVsCodeApi();
+    const thinkingEmojis = ["\u{1F914}", "\u{1F300}", "\u{1F4AD}", "\u2728", "\u231B"];
+    let emojiIndex = 0;
+    document.getElementById('scope-toggle-inline')?.addEventListener('click', () => vscode.postMessage({ command: 'toggleScope' }));
     const form = document.getElementById('ask-form');
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -28056,6 +28230,15 @@ var FloatingPanelProvider = class {
     document.getElementById('clear-btn').addEventListener('click', () => {
       vscode.postMessage({ command: 'clear' });
     });
+
+    // Animate typing placeholder with rotating emojis while thinking
+    const typingEl = document.getElementById('typing-text');
+    if (typingEl) {
+      setInterval(() => {
+        emojiIndex = (emojiIndex + 1) % thinkingEmojis.length;
+        typingEl.textContent = thinkingEmojis[emojiIndex] + ' thinking\u2026';
+      }, 800);
+    }
   </script>
 </body>
 </html>`;
@@ -28094,7 +28277,9 @@ ${selectionText}` : question.trim();
       const answer = await this.aiService.ask(
         `${historyContext}
 Current question: ${augmentedQuestion}`,
-        contextInfo
+        contextInfo,
+        void 0,
+        this.pythonFocus
       );
       if (this.conversation.length > 0 && this.conversation[this.conversation.length - 1].role === "assistant" && this.conversation[this.conversation.length - 1].content.startsWith("\u2026")) {
         this.conversation.pop();
@@ -28304,6 +28489,16 @@ ${lines.join("\n")}
     html = `<p>${html}</p>`;
     html = html.replace(/__CODE_BLOCK_(\d+)__/g, (_m, i) => codeBlocks[Number(i)] ?? "");
     return html;
+  }
+  /**
+   * Toggles Python-focused answers for free-form questions in floating panel.
+   */
+  async toggleScope() {
+    this.pythonFocus = !this.pythonFocus;
+    await vscode9.workspace.getConfiguration("ghiaAI").update("askPythonMode", this.pythonFocus, vscode9.ConfigurationTarget.Global);
+    if (this.panel) {
+      this.panel.webview.html = this.renderChatHtml();
+    }
   }
   dispose() {
     this.panel?.dispose();
