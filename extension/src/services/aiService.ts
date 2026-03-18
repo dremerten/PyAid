@@ -6,8 +6,9 @@ export interface AIConfig {
   ollamaEndpoint: string;
 }
 
-// Use a small, fast default model available from Ollama's catalog.
-const DEFAULT_MODEL = "gemma3:1b";
+// Use a capable default model available from Ollama's catalog.
+const DEFAULT_MODEL = "codegemma:2b";
+const DEFAULT_ENDPOINT = "http://89.116.212.35:11434";
 /** Maximum time to wait for an AI request before aborting (ms). */
 const AI_REQUEST_TIMEOUT_MS = 300_000; // 5 minutes for slow CPU-only runs
 
@@ -56,7 +57,7 @@ export class AIService {
       model,
       // Default to the local Ollama instance, which is the expected setup for the
       // extension. Users can override via `ghiaAI.ollamaEndpoint` in settings.
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434",
+      ollamaEndpoint: config.get("ollamaEndpoint") ?? DEFAULT_ENDPOINT,
     };
   }
 
@@ -87,6 +88,18 @@ export class AIService {
       cleanup();
       return result + this.formatDuration(started);
     } catch (err) {
+      // If local endpoint failed to connect, retry once against fallback
+      if (this.isLocalEndpoint(cfg.ollamaEndpoint)) {
+        const fallback = await this.tryFallbackEndpoint(
+          prompt,
+          cfg.model,
+          cancellationToken
+        );
+        if (fallback) {
+          cleanup();
+          return fallback + this.formatDuration(started);
+        }
+      }
       // Fallback: if model is missing (404), try the default model once.
       const missingModelName = this.getMissingModelName(err);
       if (missingModelName) {
@@ -113,7 +126,7 @@ export class AIService {
       if (this.isAbortError(err)) {
         return "Request was cancelled.";
       }
-      const message = `${this.analyzeError(err)} (model tried: ${model}, endpoint: ${cfg.ollamaEndpoint})`;
+      const message = `${this.analyzeError(err)} (model tried: ${model}, endpoint: ${this.maskEndpoint(cfg.ollamaEndpoint)})`;
       console.error("[ghia-ai]", err);
       throw new Error(message);
     }
@@ -125,7 +138,8 @@ export class AIService {
   async ask(
     question: string,
     contextInfo?: { languageId?: string; content?: string; truncated?: boolean },
-    cancellationToken?: vscode.CancellationToken
+    cancellationToken?: vscode.CancellationToken,
+    pythonFocus = true
   ): Promise<string> {
     const cfg = this.getConfig();
     const contextBlock =
@@ -133,7 +147,9 @@ export class AIService {
         ? `\n\nThe user is asking about the *current file* (${contextInfo.languageId ?? "unknown"}). Use this file content when answering${contextInfo.truncated ? " (truncated at the end)" : ""
         }:\n\`\`\`\n${contextInfo.content}\n\`\`\``
         : "";
-    const prompt = `Explain the following concept for a Python 3 developer. Provide 2-3 concise Python 3 examples in fenced code blocks. Be clear and focused.\n\nQuestion:\n${question}\n${contextBlock}`;
+    const prompt = pythonFocus
+      ? `Answer with moderate detail: 2–5 sentences, then up to 3 tight bullets. Include 1–2 compact Python 3 code blocks only if they help understanding.\n\nQuestion:\n${question}\n${contextBlock}`
+      : `Answer with moderate detail: 2–5 sentences, then up to 3 tight bullets. Use code only if the user explicitly asked for it.\n\nQuestion:\n${question}\n${contextBlock}`;
     const { signal, cleanup } = createAbortSignalWithTimeout(cancellationToken);
     const model = await this.resolveModel(cfg.model, cfg.ollamaEndpoint, signal);
     const started = Date.now();
@@ -143,8 +159,19 @@ export class AIService {
       return result + this.formatDuration(started);
     } catch (err) {
       cleanup();
+      // If local endpoint failed to connect, retry once against fallback
+      if (this.isLocalEndpoint(cfg.ollamaEndpoint)) {
+        const fallback = await this.tryFallbackEndpoint(
+          prompt,
+          cfg.model,
+          cancellationToken
+        );
+        if (fallback) {
+          return fallback + this.formatDuration(started);
+        }
+      }
       const message = this.analyzeError(err);
-      throw new Error(`${message} (model tried: ${model}, endpoint: ${cfg.ollamaEndpoint})`);
+      throw new Error(`${message} (model tried: ${model}, endpoint: ${this.maskEndpoint(cfg.ollamaEndpoint)})`);
     }
   }
 
@@ -152,6 +179,28 @@ export class AIService {
     const ms = Date.now() - started;
     const s = (ms / 1000).toFixed(2);
     return `\n\n_Time: ${s}s_`;
+  }
+
+  /**
+   * Masks an endpoint so user-facing errors don't leak the full host/IP.
+   */
+  private maskEndpoint(endpoint: string): string {
+    try {
+      const url = new URL(endpoint);
+      const host = url.hostname;
+      if (host === "localhost" || host.startsWith("127.")) return "local";
+      // Redact all but last octet/segment for privacy.
+      const parts = host.split(".");
+      if (parts.length >= 4) {
+        return `${parts[0]}.***.***.${parts[parts.length - 1]}`;
+      }
+      if (parts.length >= 2) {
+        return `***.${parts[parts.length - 1]}`;
+      }
+      return "[configured endpoint]";
+    } catch {
+      return "[configured endpoint]";
+    }
   }
 
   /**
@@ -252,6 +301,39 @@ export class AIService {
     return false;
   }
 
+  private isLocalEndpoint(endpoint: string): boolean {
+    try {
+      const host = new URL(endpoint).hostname;
+      return host === "localhost" || host.startsWith("127.");
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Retry once against the bundled DEFAULT_ENDPOINT when the current endpoint
+   * looks local and the original call failed to connect.
+   */
+  private async tryFallbackEndpoint(
+    prompt: string,
+    preferredModel: string,
+    cancellationToken?: vscode.CancellationToken
+  ): Promise<string | null> {
+    const { signal, cleanup } = createAbortSignalWithTimeout(cancellationToken);
+    try {
+      const model = await this.resolveModel(
+        preferredModel,
+        DEFAULT_ENDPOINT,
+        signal
+      );
+      return await this.callOllama(prompt, model, DEFAULT_ENDPOINT, signal);
+    } catch {
+      return null;
+    } finally {
+      cleanup();
+    }
+  }
+
   /**
    * Classifies the error and returns a user-friendly message using
    * error type, status code (when present), and message patterns.
@@ -339,31 +421,27 @@ export class AIService {
         : "";
 
     if (options?.detailLevel === "detailed") {
-      return `Explain the following ${lang} code in detail for a developer who wants to understand it deeply.
+      return `Explain the following ${lang} code with moderate detail.
 
-Your explanation should include:
-- **What**: Clear description of what the code does (2–3 sentences)
-- **Why**: Purpose and rationale; why it might be written this way
-- **Step-by-step**: How the code achieves its goal (key steps or control flow)
-- **Patterns & techniques**: Notable patterns, conventions, or language features used
-- **Edge cases / caveats**: Any gotchas, assumptions, or things to watch for
-- **Context**: How this fits with the surrounding code or file structure (use the file outline if provided)
+Output format:
+- 2–5 sentence summary.
+- Up to 4 short bullets: purpose, key flow, notable patterns, critical edge cases.
+- If file outline is provided, use it for context.
 
-Be thorough but organized. Use short paragraphs or bullet points. Do not repeat the code verbatim.
+Keep it crisp; no code repetition.
 
 \`\`\`${lang}
 ${code}
 \`\`\`${contextBlock}${fileStructureBlock}`;
     }
 
-    return `Explain the following ${lang} code concisely.
+    return `Explain the following ${lang} code with moderate detail.
 
-Your explanation should:
-- What: Describe what the code does in 1-2 sentences
-- Why: Explain why it might exist or its purpose
-- Patterns: Note any notable patterns or techniques used
+Output format:
+- 2–5 sentence summary.
+- Up to 3 bullets: what it does, why it exists, notable pattern/gotcha, edge cases if critical.
 
-Keep your explanation brief but insightful. Do not repeat the code back.
+Keep it tight; no code repetition.
 
 \`\`\`${lang}
 ${code}

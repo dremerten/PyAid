@@ -185,8 +185,13 @@
         },
         "ghiaAI.model": {
           "type": "string",
-          "default": "gemma3:1b",
+          "default": "codegemma:2b",
           "description": "Model name to use for explanations."
+        },
+        "ghiaAI.askPythonMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, free-form answers are tailored for Python developers with Python examples. Turn off to get general answers without Python code."
         },
         "ghiaAI.highlightColor": {
           "type": "string",
