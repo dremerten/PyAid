@@ -1,7 +1,7 @@
 {
-  "name": "@ghia-ai/shared",
+  "name": "@pyaid/shared",
   "version": "1.0.0",
-  "description": "Shared TypeScript types for ghia-ai extension",
+  "description": "Shared TypeScript types for PyAid extension",
   "main": "types.ts",
   "types": "types.ts"
 }

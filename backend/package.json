@@ -1,7 +1,7 @@
 {
-  "name": "ghia-ai-backend",
+  "name": "pyaid-backend",
   "version": "1.0.0",
-  "description": "ghia-ai backend service for Azure Functions",
+  "description": "PyAid backend service for Azure Functions",
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",
-    "@ghia-ai/shared": "file:../shared",
+    "@pyaid/shared": "file:../shared",
     "dotenv": "^17.2.4",
     "ioredis": "^5.3.0",
     "jsonwebtoken": "^9.0.0",
