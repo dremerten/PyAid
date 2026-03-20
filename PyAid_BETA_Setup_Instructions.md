@@ -1,99 +1,61 @@
-# PyAid Beta Setup Instructions
+# PyAid Beta Tester Setup Instructions
 
-This guide explains how to package PyAid as a `.vsix`, share it, install it in VS Code, and run a guided local Ollama setup quickly.
+This package is for testers only. You only need the files included in this bundle:
+- `pyaid-<version>.vsix`
+- `PyAid_BETA_Setup_Instructions.md`
+- `pyaid-beta-onboarding.sh`
+- `pyaid-beta-onboarding.ps1`
 
-## 1) Create the beta package (`.vsix`)
+## 1) Install the extension from VSIX
 
-From the repository root:
-
-```bash
-./scripts/package-beta-vsix.sh
-```
-
-The script will:
-- install extension dependencies (if needed)
-- build the extension
-- create a `.vsix` package
-- print the output file path
-
-Expected output location:
-
-```text
-extension/pyaid-<version>.vsix
-```
-
-## 2) Share the package
-
-Share the generated `.vsix` file with testers (Drive, Slack, email, etc.).
-
-## 3) Install the package in VS Code (tester steps)
-
-### Option A: VS Code UI
+### VS Code UI
 1. Open VS Code
 2. Open Extensions panel
 3. Click `...` (top-right)
 4. Click **Install from VSIX...**
-5. Select the `pyaid-<version>.vsix` file
+5. Select `pyaid-<version>.vsix`
 
-### Option B: VS Code CLI
-
-```bash
-code --install-extension /absolute/path/to/pyaid-<version>.vsix
-```
-
-If updating an existing beta install:
-
+### VS Code CLI
 ```bash
 code --install-extension /absolute/path/to/pyaid-<version>.vsix --force
 ```
 
-## 4) Run the guided Ollama setup (recommended)
+## 2) Run local Ollama onboarding (recommended)
 
-These scripts prompt for permission at every step and can:
+The onboarding script prompts for permission before each change. It can:
 - install Ollama if missing
-- start Ollama if not running
+- ensure Ollama is running
 - create/update `~/.pyaid-endpoint`
 - pull `gemma3:4b`
 
 ### macOS / Linux
-
 ```bash
-chmod +x ./scripts/pyaid-beta-onboarding.sh
-./scripts/pyaid-beta-onboarding.sh
+chmod +x ./pyaid-beta-onboarding.sh
+./pyaid-beta-onboarding.sh
 ```
 
 ### Windows (PowerShell)
-
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-./scripts/pyaid-beta-onboarding.ps1
+./pyaid-beta-onboarding.ps1
 ```
 
-## 5) What the onboarding scripts do
+## 3) Configure PyAid in VS Code
 
-1. Check whether Ollama is installed
-2. If missing, ask permission to install:
-   - macOS/Linux: `curl -fsSL https://ollama.com/install.sh | sh`
-   - Windows: `irm https://ollama.com/install.ps1 | iex`
-3. Ensure Ollama is running
-4. Check/create `~/.pyaid-endpoint` using `http://127.0.0.1:11434` or `http://localhost:11434`
-5. Ask permission to pull `gemma3:4b`
-
-## 6) Recommended VS Code settings after setup
-
+Recommended values:
 - `pyaid.ollamaEndpoint`: value from `~/.pyaid-endpoint`
 - `pyaid.model`: `gemma3:4b`
 
-## 7) Quick smoke test after install
+## 4) Smoke test
 
 1. Open a Python file
-2. Click the PyAid status bar button
-3. Ask a question in the PyAid panel
-4. Click "Explain this function/method definition" on a function
-5. Confirm responses appear in the same PyAid session
+2. Open the PyAid panel
+3. Ask a question
+4. Click **Explain this function/method definition**
+5. Verify the response appears in the same session
 
-## 8) Troubleshooting
+## 5) Troubleshooting
 
 - If no response appears, ensure Ollama is running locally.
-- If model not found, run `ollama list` and update `pyaid.model`.
-- If a new beta version does not replace the old one, reinstall with `--force`.
+- If model is missing, run `ollama pull gemma3:4b`.
+- If VSIX install does not update, reinstall with `--force`.
