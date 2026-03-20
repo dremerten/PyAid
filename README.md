@@ -6,6 +6,12 @@
 
 AI-powered Python guidance at your fingertips. Local-first VS Code helper that explains code and answers questions using your own Ollama models. It shows results in hovers and a side panel with a single click.
 
+## Screenshot
+
+![PyAid extension screenshot](./extension/media/Screenshot%20from%202026-03-20%2013-32-24.png)
+
+*PyAid running side-by-side with the active file: persistent chat sessions, inline explain flow, and local-model responses in one panel.*
+
 ## Quick start (local, Ollama)
 
 1) Install prerequisites: Node 18+, npm, VS Code, and [Ollama](https://ollama.com).  
