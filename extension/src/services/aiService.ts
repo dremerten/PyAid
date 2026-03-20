@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { fetch as undiciFetch } from "undici";
+import { readEndpointFromFile } from "../utils/endpoint";
 
 export interface AIConfig {
   model: string;
@@ -9,8 +10,7 @@ export interface AIConfig {
 // Use a capable default model available from Ollama's catalog.
 const DEFAULT_MODEL = "codegemma:2b";
 // Keep the default local; allow overriding without committing IPs/hosts.
-const DEFAULT_ENDPOINT =
-  process.env.GHIA_AI_OLLAMA_ENDPOINT ?? "http://localhost:11434";
+const DEFAULT_ENDPOINT = "http://localhost:11434";
 /** Maximum time to wait for an AI request before aborting (ms). */
 const AI_REQUEST_TIMEOUT_MS = 300_000; // 5 minutes for slow CPU-only runs
 
@@ -49,7 +49,24 @@ export class AIService {
     : (undiciFetch as unknown as typeof fetch);
 
   private getConfig(): AIConfig {
-    const config = vscode.workspace.getConfiguration("ghiaAI");
+    const config = vscode.workspace.getConfiguration("pyaid");
+    const inspect = config.inspect<string>("ollamaEndpoint");
+    const hasUserEndpoint = Boolean(
+      inspect?.globalValue ?? inspect?.workspaceValue ?? inspect?.workspaceFolderValue
+    );
+    const endpointFromConfig = hasUserEndpoint ? config.get("ollamaEndpoint") : undefined;
+    const envEndpoint = process.env.GHIA_AI_OLLAMA_ENDPOINT;
+    const fileEndpoint = readEndpointFromFile();
+
+    const resolvedEndpoint =
+      (typeof endpointFromConfig === "string" && endpointFromConfig.trim()
+        ? endpointFromConfig.trim()
+        : undefined) ??
+      (typeof envEndpoint === "string" && envEndpoint.trim()
+        ? envEndpoint.trim()
+        : undefined) ??
+      fileEndpoint ??
+      DEFAULT_ENDPOINT;
     const modelFromConfig = config.get("model");
     const model =
       typeof modelFromConfig === "string" && modelFromConfig.trim()
@@ -58,8 +75,8 @@ export class AIService {
     return {
       model,
       // Default to the local Ollama instance, which is the expected setup for the
-      // extension. Users can override via `ghiaAI.ollamaEndpoint` in settings.
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? DEFAULT_ENDPOINT,
+      // extension. Users can override via `pyaid.ollamaEndpoint` in settings.
+      ollamaEndpoint: resolvedEndpoint,
     };
   }
 
@@ -129,7 +146,7 @@ export class AIService {
         return "Request was cancelled.";
       }
       const message = `${this.analyzeError(err)} (model tried: ${model}, endpoint: ${this.maskEndpoint(cfg.ollamaEndpoint)})`;
-      console.error("[ghia-ai]", err);
+      console.error("[PyAid]", err);
       throw new Error(message);
     }
   }
@@ -350,7 +367,7 @@ export class AIService {
       if (status === 404) {
         const match = /model ['"]?([^'"]+)['"]? not found/i.exec(message);
         const modelName = match?.[1] ?? "the configured model";
-        return `Model "${modelName}" is not available on your Ollama instance. Run: ollama pull ${modelName}, or set "ghiaAI.model" to a model you have.`;
+        return `Model "${modelName}" is not available on your Ollama instance. Run: ollama pull ${modelName}, or set "pyaid.model" to a model you have.`;
       }
       if (status === 401 || status === 403) {
         return "Authentication failed (401/403). Check your Ollama instance configuration.";
@@ -373,7 +390,7 @@ export class AIService {
       ) ||
       (error instanceof TypeError && msgLower.includes("fetch"))
     ) {
-      return "Could not reach Ollama. Ensure it is running locally and `ghiaAI.ollamaEndpoint` is correct.";
+      return "Could not reach Ollama. Ensure it is running locally and `pyaid.ollamaEndpoint` is correct.";
     }
     if (/timeout|etimedout|timed out/i.test(msgLower)) {
       return "The request timed out. Check your network or try again.";

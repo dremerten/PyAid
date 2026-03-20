@@ -1,10 +1,14 @@
 import * as vscode from "vscode";
-import { CodeLensHoverProvider } from "./providers/hoverProvider";
+import { PyAidHoverProvider } from "./providers/hoverProvider";
 import { StateManager } from "./managers/stateManager";
 import { MenuManager } from "./managers/menuManager";
 import { StatusBarManager } from "./managers/statusBarManager";
 import { PrototypeManager } from "./managers/prototypeManager";
 import { AIService } from "./services/aiService";
+import { writeWithConsent } from "./utils/fileWriter";
+import { ExplainDecorationProvider } from "./providers/explainDecorationProvider";
+
+const ALLOW_WRITE_KEY = "pyaid.allowFileWrites";
 import {
   activateExperiments,
   deactivateExperiments,
@@ -22,21 +26,23 @@ let menuManager: MenuManager | undefined;
 let statusBarManager: StatusBarManager | undefined;
 let prototypeManager: PrototypeManager | undefined;
 let hoverRegistrationDisposable: vscode.Disposable | undefined;
+let explainDecorationProvider: ExplainDecorationProvider | undefined;
 const aiService = new AIService();
 let askStatusBar: vscode.StatusBarItem | undefined;
 let panelStatusBar: vscode.StatusBarItem | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
-  const hoverProvider = new CodeLensHoverProvider();
+  const hoverProvider = new PyAidHoverProvider();
   const sm = new StateManager(context);
   const mm = new MenuManager(sm, context);
   const sbm = new StatusBarManager(sm, mm);
+  explainDecorationProvider = new ExplainDecorationProvider(context);
 
   stateManager = sm;
   menuManager = mm;
   statusBarManager = sbm;
 
-  context.subscriptions.push(sm, mm, sbm, hoverProvider);
+  context.subscriptions.push(sm, mm, sbm, hoverProvider, explainDecorationProvider);
 
   function registerHover(): vscode.Disposable {
     return vscode.languages.registerHoverProvider(
@@ -69,7 +75,7 @@ export function activate(context: vscode.ExtensionContext): void {
   sbm.show();
 
   const commandDisposable = vscode.commands.registerCommand(
-    "ghia-ai.explainCode",
+    "pyaid.explainCode",
     (codeOrArgs?: string | [string, string], ctx?: string) => {
       // Command URIs pass a single JSON array [code, context]; normalize to (code, context).
       let code: string | undefined;
@@ -85,13 +91,15 @@ export function activate(context: vscode.ExtensionContext): void {
         code = typeof codeOrArgs === "string" ? codeOrArgs : undefined;
         context = ctx;
       }
-      void hoverProvider.explainCode(code, context);
+      void vscode.commands
+        .executeCommand("pyaid.explainFloating", code, context)
+        .then(undefined, () => hoverProvider.explainCode(code, context));
     }
   );
   context.subscriptions.push(commandDisposable);
 
   const retryHoverCommandDisposable = vscode.commands.registerCommand(
-    "ghia-ai.retryHoverExplanation",
+    "pyaid.retryHoverExplanation",
     (code?: string, context?: string) => {
       hoverProvider.retryExplanation(code ?? "", context ?? "");
     }
@@ -101,7 +109,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const welcomeSubscription = vscode.workspace.onDidOpenTextDocument(() => {
     if (sm.hasShownWelcome()) return;
     const message =
-      "👋 Welcome to ghia-ai! Click the icon in the status bar to configure your local Ollama model and get started.";
+      "👋 Welcome to PyAid! Click the icon in the status bar to configure your local Ollama model and get started.";
     void vscode.window
       .showInformationMessage(message, "Configure Now")
       .then((selection) => {
@@ -114,7 +122,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(welcomeSubscription);
 
   const askCommand = vscode.commands.registerCommand(
-    "ghia-ai.askAI",
+    "pyaid.askAI",
     async () => {
       const question = await vscode.window.showInputBox({
         prompt: "Ask your local model a question",
@@ -146,19 +154,66 @@ export function activate(context: vscode.ExtensionContext): void {
         const answer = await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: "ghia-ai",
+            title: "PyAid",
             cancellable: false,
           },
           () => aiService.ask(question, contextInfo)
         );
-        showAnswerPanel(answer, `ghia-ai: ${question}`);
+        showAnswerPanel(answer, `PyAid: ${question}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        void vscode.window.showErrorMessage(`ghia-ai: ${msg}`);
+        void vscode.window.showErrorMessage(`PyAid: ${msg}`);
       }
     }
   );
   context.subscriptions.push(askCommand);
+
+  // Write-to-file command with explicit user consent
+  const writeCommand = vscode.commands.registerCommand(
+    "pyaid.writeToFile",
+    async (
+      filePath?: string,
+      content?: string,
+      mode: "append" | "replace" = "append"
+    ) => {
+      try {
+        const targetPath =
+          typeof filePath === "string" && filePath.trim().length > 0
+            ? filePath.trim()
+            : await vscode.window
+                .showInputBox({
+                  prompt: "Path to write (absolute or workspace-relative)",
+                  value:
+                    vscode.window.activeTextEditor?.document.uri.fsPath ?? "",
+                })
+                .then((v) => v?.trim());
+        if (!targetPath) return;
+
+        const text =
+          typeof content === "string" && content.trim().length > 0
+            ? content
+            : await vscode.window.showInputBox({
+                prompt: "Content to write",
+                placeHolder: "Paste or type the text to write",
+                ignoreFocusOut: true,
+                validateInput: (val) =>
+                  val.length === 0 ? "Content cannot be empty" : undefined,
+              });
+        if (!text) return;
+
+        const allowWrites =
+          context.globalState.get<boolean>(ALLOW_WRITE_KEY, false) ?? false;
+        await writeWithConsent(targetPath, text, mode, allowWrites);
+        void vscode.window.showInformationMessage(
+          `PyAid wrote to ${targetPath}`
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        void vscode.window.showErrorMessage(`PyAid: ${msg}`);
+      }
+    }
+  );
+  context.subscriptions.push(writeCommand);
 
   // Status bar button to open Ask dialog quickly
   askStatusBar = vscode.window.createStatusBarItem(
@@ -167,7 +222,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   askStatusBar.text = "$(comment-discussion) Ask AI";
   askStatusBar.tooltip = "Ask your local model (Python 3 examples)";
-  askStatusBar.command = "ghia-ai.askAI";
+  askStatusBar.command = "pyaid.askAI";
   askStatusBar.show();
   context.subscriptions.push(askStatusBar);
 
@@ -176,15 +231,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.StatusBarAlignment.Right,
     88
   );
-  panelStatusBar.text = "$(layout-sidebar-right) ghia-ai";
-  panelStatusBar.tooltip = "Open the ghia-ai side panel";
-  panelStatusBar.command = "ghia-ai.openPanel";
+  panelStatusBar.text = "$(layout-sidebar-right) PyAid";
+  panelStatusBar.tooltip = "Open the PyAid side panel";
+  panelStatusBar.command = "pyaid.openPanel";
   panelStatusBar.show();
   context.subscriptions.push(panelStatusBar);
 
   // Only activate experiments UI (status bar) when explicitly enabled via configuration
   // This prevents the experimental status bar from showing to production users
-  const config = vscode.workspace.getConfiguration("ghiaAI");
+  const config = vscode.workspace.getConfiguration("pyaid");
   const experimentsEnabled = config.get<boolean>("enableExperiments", false);
   if (experimentsEnabled) {
     activateExperiments(context);
@@ -193,16 +248,16 @@ export function activate(context: vscode.ExtensionContext): void {
   // Always register experiment commands so they don't cause "command not found" errors
   // Handlers check config at runtime and show info message if experiments are disabled
   const experimentDisabledMessage =
-    'Experiments are disabled. Enable them in settings: "ghiaAI.enableExperiments": true';
+    'Experiments are disabled. Enable them in settings: "pyaid.enableExperiments": true';
 
   function isExperimentsEnabled(): boolean {
     return vscode.workspace
-      .getConfiguration("ghiaAI")
+      .getConfiguration("pyaid")
       .get<boolean>("enableExperiments", false);
   }
 
   const experimentMenuCommand = vscode.commands.registerCommand(
-    "ghia-ai.experiment.menu",
+    "pyaid.experiment.menu",
     () => {
       if (!isExperimentsEnabled()) {
         void vscode.window.showInformationMessage(experimentDisabledMessage);
@@ -213,7 +268,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   const experimentStopCommand = vscode.commands.registerCommand(
-    "ghia-ai.experiment.stop",
+    "pyaid.experiment.stop",
     () => {
       if (!isExperimentsEnabled()) {
         void vscode.window.showInformationMessage(experimentDisabledMessage);
@@ -225,7 +280,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   const experimentStatusCommand = vscode.commands.registerCommand(
-    "ghia-ai.experiment.status",
+    "pyaid.experiment.status",
     () => {
       if (!isExperimentsEnabled()) {
         void vscode.window.showInformationMessage(experimentDisabledMessage);
@@ -251,7 +306,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const experimentRunCommands = experimentModes.map((mode) =>
     vscode.commands.registerCommand(
-      `ghia-ai.experiment.run.${mode}`,
+      `pyaid.experiment.run.${mode}`,
       () => {
         if (!isExperimentsEnabled()) {
           void vscode.window.showInformationMessage(experimentDisabledMessage);
@@ -269,17 +324,16 @@ export function activate(context: vscode.ExtensionContext): void {
     ...experimentRunCommands
   );
 
-  // Always register prototype UI (CodeLens/Side Panel/Floating)
+  // Always register prototype UI (Side Panel/Floating)
   // Users can still pick their preferred mode via settings or the mode selector.
   prototypeManager = new PrototypeManager(context);
   context.subscriptions.push(prototypeManager);
 
-  // One-click command to focus the ghia-ai side panel
+  // One-click command to focus the PyAid side panel
   const openPanelCommand = vscode.commands.registerCommand(
-    "ghia-ai.openPanel",
+    "pyaid.openPanel",
     async () => {
-      // Delegate to the wide floating panel for a 50/50 split
-      await vscode.commands.executeCommand("ghia-ai.openWidePanel");
+      await vscode.commands.executeCommand("pyaid.openWidePanel");
     }
   );
   context.subscriptions.push(openPanelCommand);
@@ -307,7 +361,7 @@ export function deactivate(): void {
 
 function showAnswerPanel(markdown: string, title: string): void {
   const panel = vscode.window.createWebviewPanel(
-    "ghiaAiAnswer",
+    "pyaidAnswer",
     title,
     vscode.ViewColumn.Beside,
     { enableScripts: false }

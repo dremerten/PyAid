@@ -1,10 +1,12 @@
 import * as vscode from "vscode";
 import { StateManager } from "./stateManager";
+import { readEndpointFromFile } from "../utils/endpoint";
 
-const CONFIG_NS = "ghiaAI";
+const CONFIG_NS = "PyAid";
 const ACTION_PREFIX = "action:";
 
 const DEFAULT_MODEL = "llama3";
+const DEFAULT_ENDPOINT = "http://127.0.0.1:11434";
 const OLLAMA_MODELS = ["llama3", "llama3.2", "codellama", "mistral", "phi3"];
 
 type MenuAction = "toggle" | "openSettings" | "showModelMenu";
@@ -33,7 +35,7 @@ export class MenuManager {
     this.configWatcherDisposable = vscode.workspace.onDidChangeConfiguration(
       (e) => {
         if (
-          e.affectsConfiguration("ghiaAI") &&
+          e.affectsConfiguration("PyAid") &&
           this.quickPick &&
           (this.quickPick as { visible?: boolean }).visible
         ) {
@@ -47,14 +49,31 @@ export class MenuManager {
   private getConfig(): MenuConfig {
     const config = vscode.workspace.getConfiguration(CONFIG_NS);
     const modelFromConfig = config.get("model");
+    const inspect = config.inspect<string>("ollamaEndpoint");
+    const hasUserEndpoint = Boolean(
+      inspect?.globalValue ?? inspect?.workspaceValue ?? inspect?.workspaceFolderValue
+    );
+    const endpointFromConfig = hasUserEndpoint ? config.get("ollamaEndpoint") : undefined;
+    const fileEndpoint = readEndpointFromFile();
+    const envEndpoint = process.env.GHIA_AI_OLLAMA_ENDPOINT;
     const model =
       typeof modelFromConfig === "string" && modelFromConfig.trim()
         ? modelFromConfig
         : DEFAULT_MODEL;
+
+    const resolvedEndpoint =
+      (typeof endpointFromConfig === "string" && endpointFromConfig.trim()
+        ? endpointFromConfig.trim()
+        : undefined) ??
+      (typeof envEndpoint === "string" && envEndpoint.trim()
+        ? envEndpoint.trim()
+        : undefined) ??
+      fileEndpoint ??
+      DEFAULT_ENDPOINT;
     return {
       model,
       // Default to local Ollama; users can override in settings if remote.
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434",
+      ollamaEndpoint: resolvedEndpoint,
     };
   }
 
@@ -80,8 +99,8 @@ export class MenuManager {
   private buildItems(): ActionableQuickPickItem[] {
     const enabled = this.stateManager.getEnabled();
     const toggleLabel = enabled
-      ? "$(check) ghia-ai enabled"
-      : "ghia-ai disabled";
+      ? "$(check) PyAid enabled"
+      : "PyAid disabled";
     const toggleDescription = enabled
       ? "Click to disable hover explanations"
       : "Click to enable hover explanations";
@@ -191,7 +210,7 @@ export class MenuManager {
   showMainMenu(): void {
     if (!this.quickPick) {
       this.quickPick = vscode.window.createQuickPick<ActionableQuickPickItem>();
-      this.quickPick.title = "ghia-ai";
+      this.quickPick.title = "PyAid";
       this.quickPick.placeholder = "Choose an action (multiple allowed)";
       this.quickPick.matchOnDescription = true;
       this.quickPick.canSelectMany = true;

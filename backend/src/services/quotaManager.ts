@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { QuotaRecord, UsageSnapshot } from '@codelens-ai/shared';
+import { QuotaRecord, UsageSnapshot } from '@pyaid/shared';
 import { config } from '../config/env.js';
 
 let redisClient: Redis | null = null;

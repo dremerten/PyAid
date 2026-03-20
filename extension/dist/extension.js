@@ -1138,14 +1138,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path4 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path && path[0] !== "/") {
-          path = `/${path}`;
+        if (path4 && path4[0] !== "/") {
+          path4 = `/${path4}`;
         }
-        return new URL(`${origin}${path}`);
+        return new URL(`${origin}${path4}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -1956,9 +1956,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path, origin }
+            request: { method, path: path4, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path);
+          debugLog("sending request to %s %s%s", method, origin, path4);
         }
       );
     }
@@ -1976,14 +1976,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path, origin },
+            request: { method, path: path4, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path,
+            path4,
             statusCode
           );
         }
@@ -1992,23 +1992,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path, origin }
+            request: { method, path: path4, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path);
+          debugLog("trailers received from %s %s%s", method, origin, path4);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path, origin },
+            request: { method, path: path4, origin },
             error
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path,
+            path4,
             error.message
           );
         }
@@ -2109,7 +2109,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request = class {
       constructor(origin, {
-        path,
+        path: path4,
         method,
         body,
         headers,
@@ -2126,11 +2126,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path !== "string") {
+        if (typeof path4 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path[0] !== "/" && !(path.startsWith("http://") || path.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path4[0] !== "/" && !(path4.startsWith("http://") || path4.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path)) {
+        } else if (invalidPathRegex.test(path4)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -2205,7 +2205,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path, query) : path;
+        this.path = query ? serializePathWithQuery(path4, query) : path4;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
@@ -2519,10 +2519,10 @@ var require_wrap_handler = __commonJS({
 var require_dispatcher = __commonJS({
   "node_modules/undici/lib/dispatcher/dispatcher.js"(exports2, module2) {
     "use strict";
-    var EventEmitter4 = require("node:events");
+    var EventEmitter3 = require("node:events");
     var WrapHandler = require_wrap_handler();
     var wrapInterceptor = (dispatch) => (opts, handler) => dispatch(opts, WrapHandler.wrap(handler));
-    var Dispatcher = class extends EventEmitter4 {
+    var Dispatcher = class extends EventEmitter3 {
       dispatch() {
         throw new Error("not implemented");
       }
@@ -2673,9 +2673,9 @@ var require_dispatcher_base = __commonJS({
       }
       close(callback) {
         if (callback === void 0) {
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve3, reject) => {
             this.close((err, data) => {
-              return err ? reject(err) : resolve(data);
+              return err ? reject(err) : resolve3(data);
             });
           });
         }
@@ -2713,9 +2713,9 @@ var require_dispatcher_base = __commonJS({
           err = null;
         }
         if (callback === void 0) {
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve3, reject) => {
             this.destroy(err, (err2, data) => {
-              return err2 ? reject(err2) : resolve(data);
+              return err2 ? reject(err2) : resolve3(data);
             });
           });
         }
@@ -6192,8 +6192,8 @@ var require_promise = __commonJS({
     function createDeferredPromise() {
       let res;
       let rej;
-      const promise = new Promise((resolve, reject) => {
-        res = resolve;
+      const promise = new Promise((resolve3, reject) => {
+        res = resolve3;
         rej = reject;
       });
       return { promise, resolve: res, reject: rej };
@@ -7238,7 +7238,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request) {
-      const { method, path, host, upgrade, blocking, reset } = request;
+      const { method, path: path4, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util.isFormDataLike(body)) {
@@ -7307,7 +7307,7 @@ var require_client_h1 = __commonJS({
       if (socket.setTypeOfService) {
         socket.setTypeOfService(request.typeOfService);
       }
-      let header = `${method} ${path} HTTP/1.1\r
+      let header = `${method} ${path4} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -7494,12 +7494,12 @@ upgrade: ${upgrade}\r
           cb();
         }
       }
-      const waitForDrain = () => new Promise((resolve, reject) => {
+      const waitForDrain = () => new Promise((resolve3, reject) => {
         assert(callback === null);
         if (socket[kError]) {
           reject(socket[kError]);
         } else {
-          callback = resolve;
+          callback = resolve3;
         }
       });
       socket.on("close", onDrain).on("drain", onDrain);
@@ -7960,7 +7960,7 @@ var require_client_h2 = __commonJS({
     function writeH2(client, request) {
       const requestTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path4, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       let { body } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util.errorRequest(client, request, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
@@ -8028,7 +8028,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path;
+          headers[HTTP2_HEADER_PATH] = path4;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -8069,7 +8069,7 @@ var require_client_h2 = __commonJS({
         stream.setTimeout(requestTimeout);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path;
+      headers[HTTP2_HEADER_PATH] = path4;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -8344,12 +8344,12 @@ var require_client_h2 = __commonJS({
           cb();
         }
       }
-      const waitForDrain = () => new Promise((resolve, reject) => {
+      const waitForDrain = () => new Promise((resolve3, reject) => {
         assert(callback === null);
         if (socket[kError]) {
           reject(socket[kError]);
         } else {
-          callback = resolve;
+          callback = resolve3;
         }
       });
       h2stream.on("close", onDrain).on("drain", onDrain);
@@ -8660,16 +8660,16 @@ var require_client = __commonJS({
         return this[kNeedDrain] < 2;
       }
       [kClose]() {
-        return new Promise((resolve) => {
+        return new Promise((resolve3) => {
           if (this[kSize]) {
-            this[kClosedResolve] = resolve;
+            this[kClosedResolve] = resolve3;
           } else {
-            resolve(null);
+            resolve3(null);
           }
         });
       }
       [kDestroy](err) {
-        return new Promise((resolve) => {
+        return new Promise((resolve3) => {
           const requests = this[kQueue].splice(this[kPendingIdx]);
           for (let i = 0; i < requests.length; i++) {
             const request = requests[i];
@@ -8680,7 +8680,7 @@ var require_client = __commonJS({
               this[kClosedResolve]();
               this[kClosedResolve] = null;
             }
-            resolve(null);
+            resolve3(null);
           };
           if (this[kHTTPContext]) {
             this[kHTTPContext].destroy(err, callback);
@@ -9080,8 +9080,8 @@ var require_pool_base = __commonJS({
           }
           return Promise.all(closeAll);
         } else {
-          return new Promise((resolve) => {
-            this[kClosedResolve] = resolve;
+          return new Promise((resolve3) => {
+            this[kClosedResolve] = resolve3;
           });
         }
       }
@@ -9800,7 +9800,7 @@ var require_socks5_utils = __commonJS({
 var require_socks5_client = __commonJS({
   "node_modules/undici/lib/core/socks5-client.js"(exports2, module2) {
     "use strict";
-    var { EventEmitter: EventEmitter4 } = require("node:events");
+    var { EventEmitter: EventEmitter3 } = require("node:events");
     var { Buffer: Buffer2 } = require("node:buffer");
     var { InvalidArgumentError, Socks5ProxyError } = require_errors();
     var { debuglog } = require("node:util");
@@ -9843,7 +9843,7 @@ var require_socks5_client = __commonJS({
       ERROR: "error",
       CLOSED: "closed"
     };
-    var Socks5Client = class extends EventEmitter4 {
+    var Socks5Client = class extends EventEmitter3 {
       constructor(socket, options = {}) {
         super();
         if (!socket) {
@@ -10173,10 +10173,10 @@ var require_socks5_proxy_agent = __commonJS({
         const proxyHost = this[kProxyUrl].hostname;
         const proxyPort = parseInt(this[kProxyUrl].port) || 1080;
         debug("creating SOCKS5 connection to", proxyHost, proxyPort);
-        const socket = await new Promise((resolve, reject) => {
+        const socket = await new Promise((resolve3, reject) => {
           const onConnect = () => {
             socket2.removeListener("error", onError);
-            resolve(socket2);
+            resolve3(socket2);
           };
           const onError = (err) => {
             socket2.removeListener("connect", onConnect);
@@ -10195,14 +10195,14 @@ var require_socks5_proxy_agent = __commonJS({
           socket.destroy();
         });
         await socks5Client.handshake();
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve3, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error("SOCKS5 authentication timeout"));
           }, 5e3);
           const onAuthenticated = () => {
             clearTimeout(timeout);
             socks5Client.removeListener("error", onError);
-            resolve();
+            resolve3();
           };
           const onError = (err) => {
             clearTimeout(timeout);
@@ -10211,14 +10211,14 @@ var require_socks5_proxy_agent = __commonJS({
           };
           if (socks5Client.state === "authenticated") {
             clearTimeout(timeout);
-            resolve();
+            resolve3();
           } else {
             socks5Client.once("authenticated", onAuthenticated);
             socks5Client.once("error", onError);
           }
         });
         await socks5Client.connect(targetHost, targetPort);
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve3, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error("SOCKS5 connection timeout"));
           }, 5e3);
@@ -10226,7 +10226,7 @@ var require_socks5_proxy_agent = __commonJS({
             debug("SOCKS5 tunnel established to", targetHost, targetPort, "via", info);
             clearTimeout(timeout);
             socks5Client.removeListener("error", onError);
-            resolve();
+            resolve3();
           };
           const onError = (err) => {
             clearTimeout(timeout);
@@ -10267,8 +10267,8 @@ var require_socks5_proxy_agent = __commonJS({
                       servername: targetHost,
                       ...connectOpts.tls || {}
                     });
-                    await new Promise((resolve, reject) => {
-                      finalSocket.once("secureConnect", resolve);
+                    await new Promise((resolve3, reject) => {
+                      finalSocket.once("secureConnect", resolve3);
                       finalSocket.once("error", reject);
                     });
                   }
@@ -10366,10 +10366,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path = "/",
+          path: path4 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path;
+        opts.path = origin + path4;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -11293,7 +11293,7 @@ var require_readable = __commonJS({
         if (this._readableState.closeEmitted) {
           return Promise.resolve(null);
         }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve3, reject) => {
           if (this[kContentLength] && this[kContentLength] > limit || this[kBytesRead] > limit) {
             this.destroy(new AbortError());
           }
@@ -11307,11 +11307,11 @@ var require_readable = __commonJS({
               if (signal.aborted) {
                 reject(signal.reason ?? new AbortError());
               } else {
-                resolve(null);
+                resolve3(null);
               }
             });
           } else {
-            this.on("close", resolve);
+            this.on("close", resolve3);
           }
           this.on("error", noop).on("data", () => {
             if (this[kBytesRead] > limit) {
@@ -11339,7 +11339,7 @@ var require_readable = __commonJS({
     }
     function consume(stream, type) {
       assert(!stream[kConsume]);
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve3, reject) => {
         if (isUnusable(stream)) {
           const rState = stream._readableState;
           if (rState.destroyed && rState.closeEmitted === false) {
@@ -11354,7 +11354,7 @@ var require_readable = __commonJS({
             stream[kConsume] = {
               type,
               stream,
-              resolve,
+              resolve: resolve3,
               reject,
               length: 0,
               body: []
@@ -11428,18 +11428,18 @@ var require_readable = __commonJS({
       return buffer;
     }
     function consumeEnd(consume2, encoding) {
-      const { type, body, resolve, stream, length } = consume2;
+      const { type, body, resolve: resolve3, stream, length } = consume2;
       try {
         if (type === "text") {
-          resolve(chunksDecode(body, length, encoding));
+          resolve3(chunksDecode(body, length, encoding));
         } else if (type === "json") {
-          resolve(JSON.parse(chunksDecode(body, length, encoding)));
+          resolve3(JSON.parse(chunksDecode(body, length, encoding)));
         } else if (type === "arrayBuffer") {
-          resolve(chunksConcat(body, length).buffer);
+          resolve3(chunksConcat(body, length).buffer);
         } else if (type === "blob") {
-          resolve(new Blob(body, { type: stream[kContentType] }));
+          resolve3(new Blob(body, { type: stream[kContentType] }));
         } else if (type === "bytes") {
-          resolve(chunksConcat(body, length));
+          resolve3(chunksConcat(body, length));
         }
         consumeFinish(consume2);
       } catch (err) {
@@ -11629,9 +11629,9 @@ var require_api_request = __commonJS({
     };
     function request(opts, callback) {
       if (callback === void 0) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve3, reject) => {
           request.call(this, opts, (err, data) => {
-            return err ? reject(err) : resolve(data);
+            return err ? reject(err) : resolve3(data);
           });
         });
       }
@@ -11843,9 +11843,9 @@ var require_api_stream = __commonJS({
     };
     function stream(opts, factory, callback) {
       if (callback === void 0) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve3, reject) => {
           stream.call(this, opts, factory, (err, data) => {
-            return err ? reject(err) : resolve(data);
+            return err ? reject(err) : resolve3(data);
           });
         });
       }
@@ -12133,9 +12133,9 @@ var require_api_upgrade = __commonJS({
     };
     function upgrade(opts, callback) {
       if (callback === void 0) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve3, reject) => {
           upgrade.call(this, opts, (err, data) => {
-            return err ? reject(err) : resolve(data);
+            return err ? reject(err) : resolve3(data);
           });
         });
       }
@@ -12228,9 +12228,9 @@ var require_api_connect = __commonJS({
     };
     function connect(opts, callback) {
       if (callback === void 0) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve3, reject) => {
           connect.call(this, opts, (err, data) => {
-            return err ? reject(err) : resolve(data);
+            return err ? reject(err) : resolve3(data);
           });
         });
       }
@@ -12430,20 +12430,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path) {
-      if (typeof path !== "string") {
-        return path;
+    function safeUrl(path4) {
+      if (typeof path4 !== "string") {
+        return path4;
       }
-      const pathSegments = path.split("?", 3);
+      const pathSegments = path4.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path;
+        return path4;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path);
+    function matchKey(mockDispatch2, { path: path4, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path4);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -12468,8 +12468,8 @@ var require_mock_utils = __commonJS({
       const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path4, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path4)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path4), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -12507,19 +12507,19 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path) {
-      while (path.endsWith("/")) {
-        path = path.slice(0, -1);
+    function removeTrailingSlash(path4) {
+      while (path4.endsWith("/")) {
+        path4 = path4.slice(0, -1);
       }
-      if (path.length === 0) {
-        path = "/";
+      if (path4.length === 0) {
+        path4 = "/";
       }
-      return path;
+      return path4;
     }
     function buildKey(opts) {
-      const { path, method, body, headers, query } = opts;
+      const { path: path4, method, body, headers, query } = opts;
       return {
-        path,
+        path: path4,
         method,
         body,
         headers,
@@ -13206,10 +13206,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path4, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path,
+            Path: path4,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -13291,9 +13291,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path, searchParams] = dispatchOpts.path.split("?");
+          const [path4, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path4}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -13497,8 +13497,8 @@ var require_snapshot_utils = __commonJS({
 var require_snapshot_recorder = __commonJS({
   "node_modules/undici/lib/mock/snapshot-recorder.js"(exports2, module2) {
     "use strict";
-    var { writeFile, readFile, mkdir } = require("node:fs/promises");
-    var { dirname, resolve } = require("node:path");
+    var { writeFile: writeFile2, readFile: readFile2, mkdir: mkdir2 } = require("node:fs/promises");
+    var { dirname: dirname3, resolve: resolve3 } = require("node:path");
     var { setTimeout: setTimeout2, clearTimeout: clearTimeout2 } = require("node:timers");
     var { InvalidArgumentError, UndiciError } = require_errors();
     var { hashId, isUrlExcludedFactory, normalizeHeaders, createHeaderFilters } = require_snapshot_utils();
@@ -13694,12 +13694,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path = filePath || this.#snapshotPath;
-        if (!path) {
+        const path4 = filePath || this.#snapshotPath;
+        if (!path4) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve(path), "utf8");
+          const data = await readFile2(resolve3(path4), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -13713,7 +13713,7 @@ var require_snapshot_recorder = __commonJS({
           if (error.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path}`, { cause: error });
+            throw new UndiciError(`Failed to load snapshots from ${path4}`, { cause: error });
           }
         }
       }
@@ -13724,17 +13724,17 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path = filePath || this.#snapshotPath;
-        if (!path) {
+        const path4 = filePath || this.#snapshotPath;
+        if (!path4) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
-        const resolvedPath = resolve(path);
-        await mkdir(dirname(resolvedPath), { recursive: true });
+        const resolvedPath = resolve3(path4);
+        await mkdir2(dirname3(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot]) => ({
           hash,
           snapshot
         }));
-        await writeFile(resolvedPath, JSON.stringify(data, null, 2), { flush: true });
+        await writeFile2(resolvedPath, JSON.stringify(data, null, 2), { flush: true });
       }
       /**
        * Clears all recorded snapshots
@@ -14353,15 +14353,15 @@ var require_redirect_handler = __commonJS({
           return;
         }
         const { origin, pathname, search } = util.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path}`;
+        const path4 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path4}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path;
+        this.opts.path = path4;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -16215,9 +16215,9 @@ var require_memory_cache_store = __commonJS({
   "node_modules/undici/lib/cache/memory-cache-store.js"(exports2, module2) {
     "use strict";
     var { Writable } = require("node:stream");
-    var { EventEmitter: EventEmitter4 } = require("node:events");
+    var { EventEmitter: EventEmitter3 } = require("node:events");
     var { assertCacheKey, assertCacheValue } = require_cache();
-    var MemoryCacheStore = class extends EventEmitter4 {
+    var MemoryCacheStore = class extends EventEmitter3 {
       #maxCount = 1024;
       #maxSize = 104857600;
       // 100MB
@@ -18819,15 +18819,15 @@ var require_request2 = __commonJS({
           this.#dispatcher = init.dispatcher || input.#dispatcher;
         }
         const origin = environmentSettingsObject.settingsObject.origin;
-        let window10 = "client";
+        let window11 = "client";
         if (request.window?.constructor?.name === "EnvironmentSettingsObject" && sameOrigin(request.window, origin)) {
-          window10 = request.window;
+          window11 = request.window;
         }
         if (init.window != null) {
-          throw new TypeError(`'window' option '${window10}' must be null`);
+          throw new TypeError(`'window' option '${window11}' must be null`);
         }
         if ("window" in init) {
-          window10 = "no-window";
+          window11 = "no-window";
         }
         request = makeRequest({
           // URL request’s URL.
@@ -18842,7 +18842,7 @@ var require_request2 = __commonJS({
           // client This’s relevant settings object.
           client: environmentSettingsObject.settingsObject,
           // window window.
-          window: window10,
+          window: window11,
           // priority request’s priority.
           priority: request.priority,
           // origin request’s origin. The propagation of the origin is only significant for navigation requests
@@ -20561,11 +20561,11 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path = url.pathname + url.search;
+        const path4 = url.pathname + url.search;
         const hasTrailingQuestionMark = url.search.length === 0 && url.href[url.href.length - url.hash.length - 1] === "?";
-        return new Promise((resolve, reject) => agent.dispatch(
+        return new Promise((resolve3, reject) => agent.dispatch(
           {
-            path: hasTrailingQuestionMark ? `${path}?` : path,
+            path: hasTrailingQuestionMark ? `${path4}?` : path4,
             origin: url.origin,
             method: request.method,
             body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body,
@@ -20643,7 +20643,7 @@ var require_fetch = __commonJS({
                 }
               }
               const onError = this.onError.bind(this);
-              resolve({
+              resolve3({
                 status,
                 statusText,
                 headersList,
@@ -20696,7 +20696,7 @@ var require_fetch = __commonJS({
                   headersList.append(headerName, String(value), true);
                 }
               }
-              resolve({
+              resolve3({
                 status,
                 statusText: STATUS_CODES[status],
                 headersList,
@@ -20712,7 +20712,7 @@ var require_fetch = __commonJS({
               for (let i = 0; i < rawHeaders.length; i += 2) {
                 headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i]), rawHeaders[i + 1].toString("latin1"), true);
               }
-              resolve({
+              resolve3({
                 status,
                 statusText: STATUS_CODES[status],
                 headersList,
@@ -21496,9 +21496,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path) {
-      for (let i = 0; i < path.length; ++i) {
-        const code = path.charCodeAt(i);
+    function validateCookiePath(path4) {
+      for (let i = 0; i < path4.length; ++i) {
+        const code = path4.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code === 127 || // DEL
         code === 59) {
@@ -24659,11 +24659,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path = opts.path;
+          let path4 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path = `/${path}`;
+            path4 = `/${path4}`;
           }
-          url = new URL(util.parseOrigin(url).origin + path);
+          url = new URL(util.parseOrigin(url).origin + path4);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -24779,16 +24779,41 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode13 = __toESM(require("vscode"));
+var vscode15 = __toESM(require("vscode"));
 
 // src/providers/hoverProvider.ts
-var vscode3 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 
 // src/services/aiService.ts
-var vscode = __toESM(require("vscode"));
+var vscode2 = __toESM(require("vscode"));
 var import_undici = __toESM(require_undici());
+
+// src/utils/endpoint.ts
+var fs = __toESM(require("fs"));
+var path = __toESM(require("path"));
+var vscode = __toESM(require("vscode"));
+function readEndpointFromFile() {
+  const candidatePaths = [];
+  const folders = vscode.workspace.workspaceFolders || [];
+  for (const folder of folders) {
+    candidatePaths.push(path.join(folder.uri.fsPath, ".pyaid-endpoint"));
+  }
+  candidatePaths.push(path.join(__dirname, "..", ".pyaid-endpoint"));
+  candidatePaths.push(path.join(__dirname, "..", "..", ".pyaid-endpoint"));
+  for (const candidate of candidatePaths) {
+    try {
+      const content = fs.readFileSync(candidate, "utf8");
+      const line = content.split(/\r?\n/).find((l) => l.trim().length > 0);
+      if (line) return line.trim();
+    } catch {
+    }
+  }
+  return null;
+}
+
+// src/services/aiService.ts
 var DEFAULT_MODEL = "codegemma:2b";
-var DEFAULT_ENDPOINT = process.env.GHIA_AI_OLLAMA_ENDPOINT ?? "http://localhost:11434";
+var DEFAULT_ENDPOINT = "http://localhost:11434";
 var AI_REQUEST_TIMEOUT_MS = 3e5;
 function createAbortSignalWithTimeout(token) {
   const controller = new AbortController();
@@ -24810,14 +24835,22 @@ function createAbortSignalWithTimeout(token) {
 var AIService = class {
   fetchImpl = globalThis.fetch ? globalThis.fetch.bind(globalThis) : import_undici.fetch;
   getConfig() {
-    const config = vscode.workspace.getConfiguration("ghiaAI");
+    const config = vscode2.workspace.getConfiguration("pyaid");
+    const inspect = config.inspect("ollamaEndpoint");
+    const hasUserEndpoint = Boolean(
+      inspect?.globalValue ?? inspect?.workspaceValue ?? inspect?.workspaceFolderValue
+    );
+    const endpointFromConfig = hasUserEndpoint ? config.get("ollamaEndpoint") : void 0;
+    const envEndpoint = process.env.GHIA_AI_OLLAMA_ENDPOINT;
+    const fileEndpoint = readEndpointFromFile();
+    const resolvedEndpoint = (typeof endpointFromConfig === "string" && endpointFromConfig.trim() ? endpointFromConfig.trim() : void 0) ?? (typeof envEndpoint === "string" && envEndpoint.trim() ? envEndpoint.trim() : void 0) ?? fileEndpoint ?? DEFAULT_ENDPOINT;
     const modelFromConfig = config.get("model");
     const model = typeof modelFromConfig === "string" && modelFromConfig.trim() ? modelFromConfig : DEFAULT_MODEL;
     return {
       model,
       // Default to the local Ollama instance, which is the expected setup for the
-      // extension. Users can override via `ghiaAI.ollamaEndpoint` in settings.
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? DEFAULT_ENDPOINT
+      // extension. Users can override via `pyaid.ollamaEndpoint` in settings.
+      ollamaEndpoint: resolvedEndpoint
     };
   }
   /**
@@ -24871,7 +24904,7 @@ var AIService = class {
         return "Request was cancelled.";
       }
       const message = `${this.analyzeError(err)} (model tried: ${model}, endpoint: ${this.maskEndpoint(cfg.ollamaEndpoint)})`;
-      console.error("[ghia-ai]", err);
+      console.error("[PyAid]", err);
       throw new Error(message);
     }
   }
@@ -25052,7 +25085,7 @@ _Time: ${s}s_`;
       if (status === 404) {
         const match = /model ['"]?([^'"]+)['"]? not found/i.exec(message);
         const modelName = match?.[1] ?? "the configured model";
-        return `Model "${modelName}" is not available on your Ollama instance. Run: ollama pull ${modelName}, or set "ghiaAI.model" to a model you have.`;
+        return `Model "${modelName}" is not available on your Ollama instance. Run: ollama pull ${modelName}, or set "pyaid.model" to a model you have.`;
       }
       if (status === 401 || status === 403) {
         return "Authentication failed (401/403). Check your Ollama instance configuration.";
@@ -25070,7 +25103,7 @@ _Time: ${s}s_`;
     if (/econnrefused|econnreset|enotfound|network|fetch failed|failed to fetch/i.test(
       msgLower
     ) || error instanceof TypeError && msgLower.includes("fetch")) {
-      return "Could not reach Ollama. Ensure it is running locally and `ghiaAI.ollamaEndpoint` is correct.";
+      return "Could not reach Ollama. Ensure it is running locally and `pyaid.ollamaEndpoint` is correct.";
     }
     if (/timeout|etimedout|timed out/i.test(msgLower)) {
       return "The request timed out. Check your network or try again.";
@@ -25644,7 +25677,7 @@ var CodeStructureDetector = class {
 };
 
 // src/utils/contextExtractor.ts
-var vscode2 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var MAX_BLOCK_SCAN_LINES = 200;
 var MAX_FORWARD_SCAN_LINES = 2e3;
 var ContextExtractor = class {
@@ -25708,16 +25741,16 @@ var ContextExtractor = class {
   getBlockRange(document, position, classification) {
     const lineCount = document.lineCount;
     if (lineCount === 0) {
-      return new vscode2.Range(0, 0, 0, 0);
+      return new vscode3.Range(0, 0, 0, 0);
     }
     const lineIndex = Math.max(0, Math.min(position.line, lineCount - 1));
-    const pos = new vscode2.Position(lineIndex, 0);
+    const pos = new vscode3.Position(lineIndex, 0);
     if (classification === "simple" || classification === "unknown") {
       return this.getSingleLineRange(document, pos);
     }
     const { start, end } = classification === "structural" ? this.getStructuralBlockLineRange(document, pos) : this.getBlockLineRange(document, pos, classification);
     const endLine = document.lineAt(end);
-    return new vscode2.Range(start, 0, end, endLine.text.length);
+    return new vscode3.Range(start, 0, end, endLine.text.length);
   }
   /**
    * Returns the range for the single line at the given position (full line from start to end).
@@ -25726,11 +25759,11 @@ var ContextExtractor = class {
   getSingleLineRange(document, position) {
     const lineCount = document.lineCount;
     if (lineCount === 0) {
-      return new vscode2.Range(0, 0, 0, 0);
+      return new vscode3.Range(0, 0, 0, 0);
     }
     const lineIndex = Math.max(0, Math.min(position.line, lineCount - 1));
     const line = document.lineAt(lineIndex);
-    return new vscode2.Range(lineIndex, 0, lineIndex, line.text.length);
+    return new vscode3.Range(lineIndex, 0, lineIndex, line.text.length);
   }
   /**
    * Language-aware block range for structural elements (function, class, if, etc.).
@@ -25865,7 +25898,7 @@ var THEME_HIGHLIGHT = {
 };
 var CACHED_ERROR_PREFIX = "Something went wrong:";
 var DETAILED_LINE_RANGE = 15;
-var CodeLensHoverProvider = class {
+var PyAidHoverProvider = class {
   aiService = new AIService();
   cacheService = new CacheService();
   contextExtractor = new ContextExtractor();
@@ -25882,7 +25915,7 @@ var CodeLensHoverProvider = class {
   explanationPanel = null;
   constructor() {
     this.updateDecorationType();
-    this.selectionListener = vscode3.window.onDidChangeTextEditorSelection(
+    this.selectionListener = vscode4.window.onDidChangeTextEditorSelection(
       (e) => {
         if (!this.lastDecoratedRange || e.textEditor !== this.lastDecoratedEditor)
           return;
@@ -25892,18 +25925,18 @@ var CodeLensHoverProvider = class {
         }
       }
     );
-    this.visibleRangesListener = vscode3.window.onDidChangeTextEditorVisibleRanges((e) => {
+    this.visibleRangesListener = vscode4.window.onDidChangeTextEditorVisibleRanges((e) => {
       if (!this.lastDecoratedRange || e.textEditor !== this.lastDecoratedEditor)
         return;
       if (!this.isRangeVisibleIn(e.visibleRanges, this.lastDecoratedRange)) {
         this.clearDecoration();
       }
     });
-    this.configListener = vscode3.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("ghiaAI.highlightColor"))
+    this.configListener = vscode4.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("pyaid.highlightColor"))
         this.updateDecorationType();
     });
-    this.themeListener = vscode3.window.onDidChangeActiveColorTheme(
+    this.themeListener = vscode4.window.onDidChangeActiveColorTheme(
       () => this.updateDecorationType()
     );
   }
@@ -25926,12 +25959,12 @@ var CodeLensHoverProvider = class {
     return false;
   }
   getHighlightColor() {
-    const custom = vscode3.workspace.getConfiguration("ghiaAI").get("highlightColor");
+    const custom = vscode4.workspace.getConfiguration("pyaid").get("highlightColor");
     if (custom && custom.trim().length > 0) return custom.trim();
-    const kind = vscode3.window.activeColorTheme.kind;
-    if (kind === vscode3.ColorThemeKind.HighContrast)
+    const kind = vscode4.window.activeColorTheme.kind;
+    if (kind === vscode4.ColorThemeKind.HighContrast)
       return THEME_HIGHLIGHT.highContrast;
-    if (kind === vscode3.ColorThemeKind.Light) return THEME_HIGHLIGHT.light;
+    if (kind === vscode4.ColorThemeKind.Light) return THEME_HIGHLIGHT.light;
     return THEME_HIGHLIGHT.dark;
   }
   updateDecorationType() {
@@ -25939,7 +25972,7 @@ var CodeLensHoverProvider = class {
       this.decorationType.dispose();
       this.decorationType = null;
     }
-    this.decorationType = vscode3.window.createTextEditorDecorationType({
+    this.decorationType = vscode4.window.createTextEditorDecorationType({
       backgroundColor: this.getHighlightColor()
     });
   }
@@ -25991,7 +26024,7 @@ var CodeLensHoverProvider = class {
     if (isEmptyLine) {
       if (!this.detector.isEmptyLineInBlock(document, position)) return null;
     }
-    const highlightPosition = isEmptyLine ? new vscode3.Position(
+    const highlightPosition = isEmptyLine ? new vscode4.Position(
       this.getPreviousNonBlankLine(document, position.line),
       0
     ) : position;
@@ -26021,7 +26054,7 @@ var CodeLensHoverProvider = class {
     const range = document.lineAt(position.line).range;
     const cached = this.cacheService.get(code);
     if (cached !== null) {
-      const editor2 = vscode3.window.visibleTextEditors.find((e) => e.document === document) ?? (vscode3.window.activeTextEditor?.document === document ? vscode3.window.activeTextEditor : void 0);
+      const editor2 = vscode4.window.visibleTextEditors.find((e) => e.document === document) ?? (vscode4.window.activeTextEditor?.document === document ? vscode4.window.activeTextEditor : void 0);
       if (editor2) {
         const highlightRange2 = this.getHighlightRange(
           document,
@@ -26030,7 +26063,7 @@ var CodeLensHoverProvider = class {
         );
         this.applyDecoration(editor2, highlightRange2);
       }
-      return new vscode3.Hover(
+      return new vscode4.Hover(
         this.createHoverContent(cached, code, context),
         range
       );
@@ -26040,11 +26073,11 @@ var CodeLensHoverProvider = class {
       highlightPosition,
       classification
     );
-    const editor = vscode3.window.visibleTextEditors.find((e) => e.document === document) ?? (vscode3.window.activeTextEditor?.document === document ? vscode3.window.activeTextEditor : void 0);
+    const editor = vscode4.window.visibleTextEditors.find((e) => e.document === document) ?? (vscode4.window.activeTextEditor?.document === document ? vscode4.window.activeTextEditor : void 0);
     if (editor) {
       this.applyDecoration(editor, highlightRange);
     }
-    const cancelSource = new vscode3.CancellationTokenSource();
+    const cancelSource = new vscode4.CancellationTokenSource();
     this.hoverCancelSource = cancelSource;
     _token.onCancellationRequested(() => cancelSource.cancel());
     void this.fetchExplanation(
@@ -26083,7 +26116,7 @@ var CodeLensHoverProvider = class {
       this.cacheService.set(code, explanation);
     } catch (err) {
       if (token?.isCancellationRequested) return;
-      console.error("[ghia-ai] fetchExplanation failed", err);
+      console.error("[PyAid] fetchExplanation failed", err);
       const message = err instanceof Error ? err.message : String(err);
       this.cacheService.set(
         code,
@@ -26092,17 +26125,17 @@ var CodeLensHoverProvider = class {
     }
   }
   createHoverContent(explanation, code, context) {
-    const md = new vscode3.MarkdownString(void 0, true);
+    const md = new vscode4.MarkdownString(void 0, true);
     md.isTrusted = true;
-    md.appendMarkdown("### \u{1F9E0} ghia-ai\n\n");
+    md.appendMarkdown("### PyAid\n\n");
     md.appendMarkdown(explanation);
     md.appendMarkdown("\n\n---\n\n");
     const args = encodeURIComponent(JSON.stringify([code, context]));
-    md.appendMarkdown(`[Learn More](command:ghia-ai.explainCode?${args})`);
+    md.appendMarkdown(`[Learn More](command:pyaid.explainCode?${args})`);
     if (explanation.startsWith(CACHED_ERROR_PREFIX)) {
       md.appendMarkdown(" | ");
       md.appendMarkdown(
-        `[Retry](command:ghia-ai.retryHoverExplanation?${args})`
+        `[Retry](command:pyaid.retryHoverExplanation?${args})`
       );
     }
     return md;
@@ -26112,15 +26145,15 @@ var CodeLensHoverProvider = class {
    * User must re-hover to see the result (Flow 4).
    */
   retryExplanation(code, context) {
-    const document = vscode3.window.activeTextEditor?.document;
+    const document = vscode4.window.activeTextEditor?.document;
     if (!document) {
-      void vscode3.window.showWarningMessage(
+      void vscode4.window.showWarningMessage(
         "No active editor. Re-hover over the code to retry."
       );
       return;
     }
     this.cacheService.delete(code);
-    const position = new vscode3.Position(0, 0);
+    const position = new vscode4.Position(0, 0);
     void this.fetchExplanation(document, position, code, context, void 0);
   }
   /**
@@ -26161,7 +26194,7 @@ var CodeLensHoverProvider = class {
     if (firstLine.length === 0) return null;
     for (let i = 0; i < document.lineCount; i++) {
       if (document.lineAt(i).text.trim() === firstLine) {
-        return new vscode3.Position(i, 0);
+        return new vscode4.Position(i, 0);
       }
     }
     return null;
@@ -26172,16 +26205,16 @@ var CodeLensHoverProvider = class {
    * are omitted, uses the active editor's selection.
    */
   async explainCode(code, context) {
-    const panel = this.getOrCreatePanel("ghia-ai: Explanation");
+    const panel = this.getOrCreatePanel("PyAid: Explanation");
     panel.webview.html = getExplanationHtml("Preparing explanation...");
-    const editor = vscode3.window.activeTextEditor;
+    const editor = vscode4.window.activeTextEditor;
     let document = editor?.document;
     let position;
     let resolvedCode;
     let resolvedContext;
     if (code === void 0 || code === "") {
       if (!editor) {
-        vscode3.window.showWarningMessage(
+        vscode4.window.showWarningMessage(
           "No active editor. Select code or hover a line first."
         );
         return;
@@ -26222,7 +26255,7 @@ var CodeLensHoverProvider = class {
           );
           resolvedContext = extracted.context;
         } else {
-          const fallbackPos = new vscode3.Position(0, 0);
+          const fallbackPos = new vscode4.Position(0, 0);
           const extracted = this.contextExtractor.extract(
             document,
             fallbackPos,
@@ -26244,10 +26277,10 @@ var CodeLensHoverProvider = class {
     const fileStructure = document != null ? this.getFileStructureSummary(document) : "";
     let explanation;
     try {
-      explanation = await vscode3.window.withProgress(
+      explanation = await vscode4.window.withProgress(
         {
-          location: vscode3.ProgressLocation.Notification,
-          title: "ghia-ai",
+          location: vscode4.ProgressLocation.Notification,
+          title: "PyAid",
           cancellable: false
         },
         async () => this.aiService.explain(
@@ -26272,17 +26305,17 @@ var CodeLensHoverProvider = class {
   getOrCreatePanel(title) {
     if (this.explanationPanel) {
       try {
-        this.explanationPanel.reveal(vscode3.ViewColumn.Beside);
+        this.explanationPanel.reveal(vscode4.ViewColumn.Beside);
         this.explanationPanel.title = title;
         return this.explanationPanel;
       } catch {
         this.explanationPanel = null;
       }
     }
-    this.explanationPanel = vscode3.window.createWebviewPanel(
-      "ghiaAiExplain",
+    this.explanationPanel = vscode4.window.createWebviewPanel(
+      "pyaidExplain",
       title,
-      vscode3.ViewColumn.Beside,
+      vscode4.ViewColumn.Beside,
       { enableScripts: false }
     );
     this.explanationPanel.onDidDispose(() => {
@@ -26341,8 +26374,8 @@ function escapeHtml(text) {
 }
 
 // src/managers/stateManager.ts
-var vscode4 = __toESM(require("vscode"));
-var STATE_KEY = "ghia-ai.state";
+var vscode5 = __toESM(require("vscode"));
+var STATE_KEY = "pyaid.state";
 var DEBOUNCE_MS = 500;
 var DEFAULT_STATE = {
   enabled: true,
@@ -26354,7 +26387,7 @@ var StateManager = class {
     this._state = this.loadState();
   }
   _state;
-  _onDidChangeEnabled = new vscode4.EventEmitter();
+  _onDidChangeEnabled = new vscode5.EventEmitter();
   onDidChangeEnabled = this._onDidChangeEnabled.event;
   _setEnabledDebounceTimer;
   loadState() {
@@ -26404,18 +26437,19 @@ var StateManager = class {
 };
 
 // src/managers/menuManager.ts
-var vscode5 = __toESM(require("vscode"));
-var CONFIG_NS = "ghiaAI";
+var vscode6 = __toESM(require("vscode"));
+var CONFIG_NS = "PyAid";
 var ACTION_PREFIX = "action:";
 var DEFAULT_MODEL2 = "llama3";
+var DEFAULT_ENDPOINT2 = "http://127.0.0.1:11434";
 var OLLAMA_MODELS = ["llama3", "llama3.2", "codellama", "mistral", "phi3"];
 var MenuManager = class {
   constructor(stateManager2, context) {
     this.stateManager = stateManager2;
     this.context = context;
-    this.configWatcherDisposable = vscode5.workspace.onDidChangeConfiguration(
+    this.configWatcherDisposable = vscode6.workspace.onDidChangeConfiguration(
       (e) => {
-        if (e.affectsConfiguration("ghiaAI") && this.quickPick && this.quickPick.visible) {
+        if (e.affectsConfiguration("PyAid") && this.quickPick && this.quickPick.visible) {
           this.quickPick.items = this.buildItems();
         }
       }
@@ -26426,13 +26460,21 @@ var MenuManager = class {
   submenuQuickPick;
   configWatcherDisposable;
   getConfig() {
-    const config = vscode5.workspace.getConfiguration(CONFIG_NS);
+    const config = vscode6.workspace.getConfiguration(CONFIG_NS);
     const modelFromConfig = config.get("model");
+    const inspect = config.inspect("ollamaEndpoint");
+    const hasUserEndpoint = Boolean(
+      inspect?.globalValue ?? inspect?.workspaceValue ?? inspect?.workspaceFolderValue
+    );
+    const endpointFromConfig = hasUserEndpoint ? config.get("ollamaEndpoint") : void 0;
+    const fileEndpoint = readEndpointFromFile();
+    const envEndpoint = process.env.GHIA_AI_OLLAMA_ENDPOINT;
     const model = typeof modelFromConfig === "string" && modelFromConfig.trim() ? modelFromConfig : DEFAULT_MODEL2;
+    const resolvedEndpoint = (typeof endpointFromConfig === "string" && endpointFromConfig.trim() ? endpointFromConfig.trim() : void 0) ?? (typeof envEndpoint === "string" && envEndpoint.trim() ? envEndpoint.trim() : void 0) ?? fileEndpoint ?? DEFAULT_ENDPOINT2;
     return {
       model,
       // Default to local Ollama; users can override in settings if remote.
-      ollamaEndpoint: config.get("ollamaEndpoint") ?? "http://127.0.0.1:11434"
+      ollamaEndpoint: resolvedEndpoint
     };
   }
   /**
@@ -26455,12 +26497,12 @@ var MenuManager = class {
    */
   buildItems() {
     const enabled = this.stateManager.getEnabled();
-    const toggleLabel = enabled ? "$(check) ghia-ai enabled" : "ghia-ai disabled";
+    const toggleLabel = enabled ? "$(check) PyAid enabled" : "PyAid disabled";
     const toggleDescription = enabled ? "Click to disable hover explanations" : "Click to enable hover explanations";
     return [
       {
         label: "Control",
-        kind: vscode5.QuickPickItemKind.Separator
+        kind: vscode6.QuickPickItemKind.Separator
       },
       {
         label: toggleLabel,
@@ -26470,7 +26512,7 @@ var MenuManager = class {
       },
       {
         label: "Configuration",
-        kind: vscode5.QuickPickItemKind.Separator
+        kind: vscode6.QuickPickItemKind.Separator
       },
       {
         label: "$(symbol-misc) Change model",
@@ -26493,7 +26535,7 @@ var MenuManager = class {
     if (action === "toggle") {
       await this.stateManager.setEnabled(!this.stateManager.getEnabled());
     } else if (action === "openSettings") {
-      await vscode5.commands.executeCommand(
+      await vscode6.commands.executeCommand(
         "workbench.action.openSettings",
         CONFIG_NS
       );
@@ -26512,7 +26554,7 @@ var MenuManager = class {
       detail: model
     }));
     if (!this.submenuQuickPick) {
-      this.submenuQuickPick = vscode5.window.createQuickPick();
+      this.submenuQuickPick = vscode6.window.createQuickPick();
       this.submenuQuickPick.canSelectMany = false;
       this.submenuQuickPick.onDidHide(() => {
         this.submenuQuickPick.selectedItems = [];
@@ -26528,8 +26570,8 @@ var MenuManager = class {
       const selected = this.submenuQuickPick.selectedItems[0];
       if (!selected?.detail) return;
       const model = selected.detail;
-      const configTarget = vscode5.ConfigurationTarget.Global;
-      void vscode5.workspace.getConfiguration(CONFIG_NS).update("model", model, configTarget);
+      const configTarget = vscode6.ConfigurationTarget.Global;
+      void vscode6.workspace.getConfiguration(CONFIG_NS).update("model", model, configTarget);
       this.submenuQuickPick.hide();
     });
     const hideDisposable = this.submenuQuickPick.onDidHide(() => {
@@ -26545,8 +26587,8 @@ var MenuManager = class {
    */
   showMainMenu() {
     if (!this.quickPick) {
-      this.quickPick = vscode5.window.createQuickPick();
-      this.quickPick.title = "ghia-ai";
+      this.quickPick = vscode6.window.createQuickPick();
+      this.quickPick.title = "PyAid";
       this.quickPick.placeholder = "Choose an action (multiple allowed)";
       this.quickPick.matchOnDescription = true;
       this.quickPick.canSelectMany = true;
@@ -26589,16 +26631,16 @@ var MenuManager = class {
 };
 
 // src/managers/statusBarManager.ts
-var vscode6 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 var STATUS_BAR_PRIORITY = 100;
-var TOOLTIP_ENABLED = "ghia-ai - Click to configure";
-var TOOLTIP_DISABLED = "ghia-ai (disabled) - Click to enable";
+var TOOLTIP_ENABLED = "PyAid - Click to configure";
+var TOOLTIP_DISABLED = "PyAid (disabled) - Click to enable";
 var StatusBarManager = class {
   constructor(stateManager2, menuManager2) {
     this.stateManager = stateManager2;
     this.menuManager = menuManager2;
-    this.statusBarItem = vscode6.window.createStatusBarItem(
-      vscode6.StatusBarAlignment.Right,
+    this.statusBarItem = vscode7.window.createStatusBarItem(
+      vscode7.StatusBarAlignment.Right,
       STATUS_BAR_PRIORITY
     );
     this.updateIcon(this.stateManager.getEnabled());
@@ -26615,14 +26657,14 @@ var StatusBarManager = class {
    * Returns a disposable that unregisters the command.
    */
   registerClickHandler(context) {
-    const disposable = vscode6.commands.registerCommand(
-      "ghia-ai.statusBarClick",
+    const disposable = vscode7.commands.registerCommand(
+      "pyaid.statusBarClick",
       () => {
         this.menuManager.showMainMenu();
       }
     );
     context.subscriptions.push(disposable);
-    this.statusBarItem.command = "ghia-ai.statusBarClick";
+    this.statusBarItem.command = "pyaid.statusBarClick";
     this.statusBarItem.tooltip = this.stateManager.getEnabled() ? TOOLTIP_ENABLED : TOOLTIP_DISABLED;
     return disposable;
   }
@@ -26646,268 +26688,11 @@ var StatusBarManager = class {
 };
 
 // src/managers/prototypeManager.ts
-var vscode10 = __toESM(require("vscode"));
-
-// src/providers/codeLensProvider.ts
-var vscode7 = __toESM(require("vscode"));
-var ExplainCodeLens = class extends vscode7.CodeLens {
-  constructor(range, code, context, languageId) {
-    super(range);
-    this.code = code;
-    this.context = context;
-    this.languageId = languageId;
-  }
-};
-var CodeLensExplainProvider = class {
-  aiService = new AIService();
-  cacheService = new CacheService();
-  contextExtractor = new ContextExtractor();
-  _onDidChangeCodeLenses = new vscode7.EventEmitter();
-  onDidChangeCodeLenses = this._onDidChangeCodeLenses.event;
-  // Track pending explanations to show loading state
-  pendingExplanations = /* @__PURE__ */ new Set();
-  explanationPanel = null;
-  // Patterns to detect code constructs worth explaining
-  patterns = {
-    // Function declarations and expressions
-    function: /^\s*(export\s+)?(async\s+)?function\s+(\w+)/,
-    arrowFunction: /^\s*(export\s+)?(const|let|var)\s+(\w+)\s*=\s*(async\s+)?\(/,
-    arrowFunctionShort: /^\s*(export\s+)?(const|let|var)\s+(\w+)\s*=\s*(async\s+)?(\w+|\([^)]*\))\s*=>/,
-    // Class and method declarations
-    class: /^\s*(export\s+)?(abstract\s+)?class\s+(\w+)/,
-    method: /^\s*(public|private|protected|static|async|\s)*(\w+)\s*\([^)]*\)\s*[:{]/,
-    // React/JSX components
-    component: /^\s*(export\s+)?(const|function)\s+([A-Z]\w+)/,
-    // Variable declarations with complex values
-    complexVariable: /^\s*(export\s+)?(const|let|var)\s+(\w+)\s*=\s*(new\s+\w+|\{|\[|function|class)/,
-    // Python patterns
-    pythonFunction: /^\s*(async\s+)?def\s+(\w+)/,
-    pythonClass: /^\s*class\s+(\w+)/,
-    // Go patterns
-    goFunction: /^\s*func\s+(\([^)]+\)\s*)?(\w+)/,
-    goStruct: /^\s*type\s+(\w+)\s+struct/,
-    // Rust patterns
-    rustFunction: /^\s*(pub\s+)?(async\s+)?fn\s+(\w+)/,
-    rustStruct: /^\s*(pub\s+)?struct\s+(\w+)/,
-    rustImpl: /^\s*impl\s+(<[^>]+>\s+)?(\w+)/
-  };
-  provideCodeLenses(document, _token) {
-    const constructs = this.detectConstructs(document);
-    return constructs.map(
-      (c) => new ExplainCodeLens(c.range, c.code, c.context, document.languageId)
-    );
-  }
-  resolveCodeLens(codeLens, _token) {
-    if (!(codeLens instanceof ExplainCodeLens)) {
-      return codeLens;
-    }
-    const key = this.getKey(codeLens.code);
-    const cached = this.cacheService.get(codeLens.code);
-    const isPending = this.pendingExplanations.has(key);
-    if (isPending) {
-      codeLens.command = {
-        title: "$(loading~spin) Explaining...",
-        command: ""
-      };
-    } else if (cached) {
-      const preview = cached.length > 50 ? `${cached.substring(0, 47)}...` : cached;
-      codeLens.command = {
-        title: `$(lightbulb) ${preview}`,
-        command: "ghia-ai.showExplanation",
-        arguments: [cached, codeLens.code]
-      };
-    } else {
-      codeLens.command = {
-        title: "$(comment-discussion) Explain this code",
-        command: "ghia-ai.explainCodeLens",
-        arguments: [codeLens.code, codeLens.context, codeLens.languageId]
-      };
-    }
-    return codeLens;
-  }
-  /**
-   * Called when user clicks "Explain this code" CodeLens.
-   * Fetches explanation and updates the CodeLens to show the result.
-   */
-  async handleExplainClick(code, context, languageId) {
-    const panel = this.getOrCreatePanel("ghia-ai: Explanation");
-    panel.webview.html = this.renderHtml("Preparing explanation...");
-    const key = this.getKey(code);
-    this.pendingExplanations.add(key);
-    this._onDidChangeCodeLenses.fire();
-    try {
-      const explanation = await this.aiService.explain(
-        code,
-        languageId,
-        context
-      );
-      this.cacheService.set(code, explanation);
-      panel.webview.html = this.renderHtml(explanation);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.cacheService.set(code, `Error: ${message}`);
-      panel.webview.html = this.renderHtml(`Error: ${message}`);
-    } finally {
-      this.pendingExplanations.delete(key);
-      this._onDidChangeCodeLenses.fire();
-    }
-  }
-  /**
-   * Shows a quick pick with the full explanation when user clicks a resolved CodeLens.
-   */
-  async showExplanation(explanation, code) {
-    const codePreview = code.length > 60 ? `${code.substring(0, 57)}...` : code;
-    await vscode7.window.showInformationMessage(
-      explanation,
-      { modal: false, detail: `Code: ${codePreview}` },
-      "Copy",
-      "Open in Panel"
-    ).then((selection) => {
-      if (selection === "Copy") {
-        vscode7.env.clipboard.writeText(explanation);
-        vscode7.window.showInformationMessage(
-          "Explanation copied to clipboard"
-        );
-      } else if (selection === "Open in Panel") {
-        vscode7.commands.executeCommand("ghia-ai.explainCode", code, "");
-      }
-    });
-  }
-  /**
-   * Detects code constructs in the document that are worth explaining.
-   * Uses regex patterns for different languages.
-   */
-  detectConstructs(document) {
-    const constructs = [];
-    const lineCount = document.lineCount;
-    const languageId = document.languageId;
-    for (let i = 0; i < lineCount; i++) {
-      const line = document.lineAt(i);
-      const text = line.text;
-      if (text.trim().length === 0) continue;
-      if (this.isCommentLine(text, languageId)) continue;
-      const construct = this.matchConstruct(text, i, document);
-      if (construct) {
-        constructs.push(construct);
-      }
-    }
-    return constructs;
-  }
-  matchConstruct(text, lineIndex, document) {
-    const position = new vscode7.Position(lineIndex, 0);
-    const range = new vscode7.Range(lineIndex, 0, lineIndex, text.length);
-    for (const [patternName, pattern] of Object.entries(this.patterns)) {
-      const match = text.match(pattern);
-      if (match) {
-        const name = this.extractName(match, patternName);
-        const type = this.getConstructType(patternName);
-        const { code, context } = this.contextExtractor.extract(
-          document,
-          position,
-          10
-        );
-        const blockCode = this.contextExtractor.extractBlock(
-          document,
-          position
-        );
-        return {
-          type,
-          name,
-          range,
-          code: blockCode.length < 500 ? blockCode : code,
-          context
-        };
-      }
-    }
-    return null;
-  }
-  extractName(match, patternName) {
-    const groups = match.filter(
-      (g) => g && !g.includes("export") && !g.includes("const")
-    );
-    return groups[groups.length - 1] || "unnamed";
-  }
-  getConstructType(patternName) {
-    if (patternName.includes("class") || patternName.includes("struct")) {
-      return "class";
-    }
-    if (patternName.includes("method")) {
-      return "method";
-    }
-    if (patternName.includes("function") || patternName.includes("Function")) {
-      return "function";
-    }
-    if (patternName.includes("Variable")) {
-      return "variable";
-    }
-    return "block";
-  }
-  isCommentLine(text, languageId) {
-    const trimmed = text.trim();
-    if (trimmed.startsWith("//")) return true;
-    if (trimmed.startsWith("/*")) return true;
-    if (trimmed.startsWith("*")) return true;
-    if (trimmed.startsWith("#") && languageId !== "csharp") return true;
-    if (trimmed.startsWith("--") && languageId === "lua") return true;
-    return false;
-  }
-  getKey(code) {
-    let hash = 0;
-    for (let i = 0; i < code.length; i++) {
-      hash = (hash << 5) - hash + code.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return String(hash);
-  }
-  dispose() {
-    this._onDidChangeCodeLenses.dispose();
-    this.explanationPanel?.dispose();
-  }
-  getOrCreatePanel(title) {
-    if (this.explanationPanel) {
-      try {
-        this.explanationPanel.reveal(vscode7.ViewColumn.Beside);
-        this.explanationPanel.title = title;
-        return this.explanationPanel;
-      } catch {
-        this.explanationPanel = null;
-      }
-    }
-    this.explanationPanel = vscode7.window.createWebviewPanel(
-      "ghiaAiExplain",
-      title,
-      vscode7.ViewColumn.Beside,
-      { enableScripts: false }
-    );
-    this.explanationPanel.onDidDispose(() => {
-      this.explanationPanel = null;
-    });
-    return this.explanationPanel;
-  }
-  renderHtml(body) {
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); padding: 1rem; line-height: 1.6; }
-    pre { white-space: pre-wrap; word-break: break-word; font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size); background: var(--vscode-editor-background); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--vscode-editorWidget-border); }
-  </style>
-</head>
-<body>
-  <pre>${this.escapeHtml(body)}</pre>
-</body>
-</html>`;
-  }
-  escapeHtml(text) {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  }
-};
+var vscode11 = __toESM(require("vscode"));
 
 // src/providers/peekViewProvider.ts
 var vscode8 = __toESM(require("vscode"));
-var EXPLAIN_SCHEME = "ghia-explain";
+var EXPLAIN_SCHEME = "PyAid-explain";
 var explanationStore = /* @__PURE__ */ new Map();
 var ExplanationDocumentProvider = class {
   _onDidChange = new vscode8.EventEmitter();
@@ -26925,7 +26710,7 @@ var ExplanationDocumentProvider = class {
    * Uses the target language for syntax highlighting in code blocks.
    */
   formatExplanation(data) {
-    const header = `// \u{1F9E0} ghia-ai Explanation
+    const header = `// PyAid Explanation
 // Generated: ${new Date(data.timestamp).toLocaleString()}
 // \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
@@ -26993,7 +26778,7 @@ var PeekExplanationProvider = class {
       explanation = await vscode8.window.withProgress(
         {
           location: vscode8.ProgressLocation.Notification,
-          title: "ghia-ai: Generating explanation...",
+          title: "PyAid: Generating explanation...",
           cancellable: true
         },
         async (_progress, token) => {
@@ -27062,7 +26847,7 @@ var QuickPeekProvider = class {
     let explanation = this.cacheService.get(code);
     if (!explanation) {
       const loadingPick = vscode8.window.createQuickPick();
-      loadingPick.title = "\u{1F9E0} ghia-ai";
+      loadingPick.title = "PyAid";
       loadingPick.placeholder = "Generating explanation...";
       loadingPick.busy = true;
       loadingPick.show();
@@ -27096,14 +26881,14 @@ var QuickPeekProvider = class {
       }
     ];
     const selection = await vscode8.window.showQuickPick(items, {
-      title: "\u{1F9E0} ghia-ai Quick Peek",
+      title: "PyAid Quick Peek",
       placeHolder: explanation
     });
     if (selection?.label.includes("Copy")) {
       await vscode8.env.clipboard.writeText(explanation);
       vscode8.window.showInformationMessage("Copied to clipboard");
     } else if (selection?.label.includes("Panel")) {
-      vscode8.commands.executeCommand("ghia-ai.explainCode", code, context);
+      vscode8.commands.executeCommand("pyaid.explainCode", code, context);
     }
   }
   dispose() {
@@ -27168,7 +26953,7 @@ var InlinePeekProvider = class {
     this.peekZoneDecoration = vscode8.window.createTextEditorDecorationType({
       after: {
         contentText: ` \u{1F4A1} ${content}`,
-        color: new vscode8.ThemeColor("editorCodeLens.foreground"),
+        color: new vscode8.ThemeColor("editor.foreground"),
         fontStyle: "italic",
         margin: "0 0 0 2em"
       },
@@ -27192,41 +26977,188 @@ var InlinePeekProvider = class {
 };
 
 // src/providers/sidePanelProvider.ts
+var vscode10 = __toESM(require("vscode"));
+
+// src/utils/fileWriter.ts
+var fs2 = __toESM(require("fs/promises"));
+var path2 = __toESM(require("path"));
 var vscode9 = __toESM(require("vscode"));
-var SidePanelProvider = class {
-  constructor(extensionUri) {
-    this.extensionUri = extensionUri;
+function isInsideWorkspace(target) {
+  const folders = vscode9.workspace.workspaceFolders ?? [];
+  if (folders.length === 0) return true;
+  return folders.some((f) => {
+    const root = f.uri.fsPath;
+    const rel = path2.relative(root, target);
+    return rel === "" || !rel.startsWith("..") && !path2.isAbsolute(rel);
+  });
+}
+async function writeWithConsent(targetPath, content, mode = "append", allowWithoutPrompt = false) {
+  const workspaceFolders = vscode9.workspace.workspaceFolders ?? [];
+  const activeDir = vscode9.window.activeTextEditor ? path2.dirname(vscode9.window.activeTextEditor.document.uri.fsPath) : void 0;
+  const baseDir = path2.isAbsolute(targetPath) ? void 0 : workspaceFolders[0]?.uri.fsPath ?? activeDir ?? process.cwd();
+  const normalized = path2.resolve(baseDir ?? process.cwd(), targetPath);
+  if (!isInsideWorkspace(normalized)) {
+    throw new Error(
+      `Refused to write outside the workspace: ${normalized}. Choose a file inside the current workspace folders.`
+    );
   }
-  static viewType = "ghia-ai.explanationPanel";
+  const workspaceFolder = vscode9.workspace.getWorkspaceFolder(
+    vscode9.Uri.file(normalized)
+  );
+  const rel = workspaceFolder?.uri && vscode9.workspace.asRelativePath(normalized);
+  const label = rel ?? normalized;
+  if (!allowWithoutPrompt) {
+    const APPROVE = "Allow";
+    const CANCEL = "Cancel";
+    const choice = await vscode9.window.showWarningMessage(
+      `PyAid wants to ${mode} ${content.length} characters to "${label}".`,
+      { modal: true },
+      APPROVE,
+      CANCEL
+    );
+    if (choice !== APPROVE) {
+      throw new Error("User denied write permission.");
+    }
+  }
+  await fs2.mkdir(path2.dirname(normalized), { recursive: true });
+  if (mode === "replace") {
+    await fs2.writeFile(normalized, content, "utf8");
+  } else if (mode === "append") {
+    await fs2.appendFile(normalized, content, "utf8");
+  } else if (mode === "remove") {
+    await fs2.writeFile(normalized, content, "utf8");
+  }
+}
+async function removePyAidBlocks(targetPath) {
+  const normalized = path2.resolve(targetPath);
+  const content = await fs2.readFile(normalized, "utf8").catch(() => "");
+  const lines = content.split(/\r?\n/);
+  const result = [];
+  let skipping = false;
+  for (const line of lines) {
+    if (line.includes("PyAid:start")) {
+      skipping = true;
+      continue;
+    }
+    if (line.includes("PyAid:end")) {
+      skipping = false;
+      continue;
+    }
+    if (!skipping) result.push(line);
+  }
+  await fs2.writeFile(normalized, result.join("\n"), "utf8");
+}
+
+// src/providers/sidePanelProvider.ts
+var path3 = __toESM(require("path"));
+var ALLOW_WRITE_KEY = "pyaid.allowFileWrites";
+var SESSION_STORE_KEY = "pyaid.panel.sessions";
+var SESSION_ACTIVE_KEY = "pyaid.panel.activeSession";
+var FLOATING_SESSION_STORE_KEY = "pyaid.floating.sessions";
+var FLOATING_SESSION_ACTIVE_KEY = "pyaid.floating.activeSession";
+var SidePanelProvider = class {
+  constructor(extensionUri, context) {
+    this.extensionUri = extensionUri;
+    this.context = context;
+    this.allowFileWrites = this.context.globalState.get(
+      ALLOW_WRITE_KEY,
+      false
+    );
+    this.loadSessions();
+    void this.loadFileOptions();
+  }
+  static viewType = "pyaid.explanationPanel";
   aiService = new AIService();
   cacheService = new CacheService();
   contextExtractor = new ContextExtractor();
   view;
+  iconUrl = "";
   history = [];
-  conversation = [];
+  sessions = [];
+  currentSessionId = null;
   disposables = [];
   askInFlight = false;
   pythonFocus = true;
+  allowFileWrites = false;
   // Track current explanation being displayed with full context for refresh
   currentExplanation = null;
+  fileOptions = [];
+  /**
+   * Extracts the first fenced code block content from a markdown string.
+   */
+  extractCodeSnippet(answer) {
+    const fenced = answer.match(/```(?:[^\n`]*)\n([\s\S]*?)```/) ?? answer.match(/```([\s\S]*?)```/);
+    if (fenced && fenced[1]) return fenced[1].trim();
+    const inline = answer.match(/`([^`]+)`/);
+    if (inline && inline[1]) return inline[1].trim();
+    return null;
+  }
+  /** Choose a comment prefix for markers based on file extension. */
+  commentPrefix(filePath) {
+    const ext = path3.extname(filePath).toLowerCase();
+    if ([".py", ".sh", ".rb", ".pl"].includes(ext)) return "#";
+    if ([".ts", ".tsx", ".js", ".jsx", ".cjs", ".mjs", ".java", ".go", ".c", ".cc", ".cpp", ".h", ".hpp"].includes(ext))
+      return "//";
+    return "//";
+  }
+  /** Wraps a snippet with PyAid markers for later removal. */
+  wrapWithMarkers(snippet, targetPath) {
+    const prefix = this.commentPrefix(targetPath);
+    const start = `${prefix} PyAid:start`;
+    const end = `${prefix} PyAid:end`;
+    const body = snippet.trimEnd();
+    return `${start}
+${body}
+${end}
+`;
+  }
+  /**
+   * Resolves a target path. If none provided, fall back to the active file when writes are allowed.
+   */
+  resolveTargetPath(provided) {
+    const editor = vscode10.window.activeTextEditor;
+    const workspaceFolders = vscode10.workspace.workspaceFolders;
+    if (provided && provided.trim().length > 0) {
+      const p = provided.trim();
+      if (path3.isAbsolute(p)) return p;
+      if (workspaceFolders && workspaceFolders.length > 0) {
+        return path3.join(workspaceFolders[0].uri.fsPath, p);
+      }
+      if (editor) {
+        return path3.join(path3.dirname(editor.document.uri.fsPath), p);
+      }
+      return path3.resolve(p);
+    }
+    if (editor) {
+      return editor.document.uri.fsPath;
+    }
+    return void 0;
+  }
   resolveWebviewView(webviewView, _context, _token) {
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this.extensionUri]
     };
-    const config = vscode9.workspace.getConfiguration("ghiaAI");
+    this.iconUrl = webviewView.webview.asWebviewUri(
+      vscode10.Uri.joinPath(this.extensionUri, "media", "pyaid.png")
+    ).toString();
+    const config = vscode10.workspace.getConfiguration("pyaid");
     this.pythonFocus = config.get("askPythonMode", true);
+    this.allowFileWrites = this.context.globalState.get(
+      ALLOW_WRITE_KEY,
+      false
+    );
     webviewView.webview.html = this.getHtml();
     webviewView.webview.onDidReceiveMessage(
       async (message) => {
         switch (message.command) {
           case "copy":
             if (this.currentExplanation) {
-              await vscode9.env.clipboard.writeText(
+              await vscode10.env.clipboard.writeText(
                 this.currentExplanation.explanation
               );
-              vscode9.window.showInformationMessage("Copied to clipboard");
+              vscode10.window.showInformationMessage("Copied to clipboard");
             }
             break;
           case "refresh":
@@ -27237,8 +27169,22 @@ var SidePanelProvider = class {
             break;
           case "clearHistory":
             this.history = [];
-            this.conversation = [];
+            this.clearCurrentConversation();
             this.updateView();
+            break;
+          case "newSession":
+            this.addSession(message.title);
+            this.updateView();
+            break;
+          case "switchSession":
+            this.setActiveSession(message.id);
+            this.updateView();
+            break;
+          case "renameSession":
+            if (typeof message.title === "string") {
+              this.renameSession(message.id, message.title);
+              this.updateView();
+            }
             break;
           case "explainSelection":
             await this.explainCurrentSelection();
@@ -27246,11 +27192,18 @@ var SidePanelProvider = class {
           case "ask":
             await this.handleAsk(message.question, {
               includeSelection: Boolean(message.includeSelection),
-              includeFile: Boolean(message.includeFile)
+              includeFile: Boolean(message.includeFile),
+              targetPath: message.targetPath,
+              writeMode: message.writeMode
             });
             break;
           case "toggleScope":
             await this.toggleScope();
+            break;
+          case "toggleWritePermission":
+            this.setAllowFileWrites(
+              typeof message.allow === "boolean" ? message.allow : !this.allowFileWrites
+            );
             break;
         }
       },
@@ -27259,15 +27212,15 @@ var SidePanelProvider = class {
     );
     this.updateView();
     this.disposables.push(
-      vscode9.window.onDidChangeActiveTextEditor(() => this.updateView()),
-      vscode9.window.onDidChangeTextEditorSelection(() => this.updateView())
+      vscode10.window.onDidChangeActiveTextEditor(() => this.updateView()),
+      vscode10.window.onDidChangeTextEditorSelection(() => this.updateView())
     );
   }
   /**
    * Explains the currently selected or cursor-adjacent code.
    */
   async explainCurrentSelection() {
-    const editor = vscode9.window.activeTextEditor;
+    const editor = vscode10.window.activeTextEditor;
     if (!editor) {
       this.showMessage("No active editor. Open a file first.");
       return;
@@ -27345,23 +27298,25 @@ var SidePanelProvider = class {
       this.history = this.history.slice(0, 20);
     }
     const now = Date.now();
-    this.conversation.push(
-      {
-        id: this.generateId(),
-        role: "user",
-        content: `Explain ${fileName.split("/").pop()}:${lineNumber}`,
-        timestamp: now,
-        kind: "explain"
-      },
-      {
-        id: this.generateId(),
-        role: "assistant",
-        content: explanation,
-        timestamp: now,
-        kind: "explain"
-      }
-    );
-    this.trimConversation();
+    this.updateSessionConversation((messages) => {
+      messages.push(
+        {
+          id: this.generateId(),
+          role: "user",
+          content: `Explain ${fileName.split("/").pop()}:${lineNumber}`,
+          timestamp: now,
+          kind: "explain"
+        },
+        {
+          id: this.generateId(),
+          role: "assistant",
+          content: explanation,
+          timestamp: now,
+          kind: "explain"
+        }
+      );
+      this.trimConversation(messages);
+    });
     this.updateView();
   }
   /**
@@ -27395,7 +27350,7 @@ var SidePanelProvider = class {
   async handleAsk(question, options) {
     const trimmed = question?.trim();
     if (!trimmed) return;
-    const editor = vscode9.window.activeTextEditor;
+    const editor = vscode10.window.activeTextEditor;
     const MAX_CHARS = 3e4;
     let contextInfo;
     if (editor) {
@@ -27434,8 +27389,10 @@ var SidePanelProvider = class {
       kind: "ask",
       pending: true
     };
-    this.conversation.push(userEntry, assistantPlaceholder);
-    this.trimConversation();
+    this.updateSessionConversation((messages) => {
+      messages.push(userEntry, assistantPlaceholder);
+      this.trimConversation(messages);
+    });
     this.askInFlight = true;
     this.updateView();
     try {
@@ -27445,6 +27402,7 @@ var SidePanelProvider = class {
         void 0,
         this.pythonFocus
       );
+      await this.maybeWriteAnswer(answer, options);
       this.replaceConversationEntry(assistantPlaceholder.id, {
         ...assistantPlaceholder,
         content: answer,
@@ -27498,19 +27456,124 @@ var SidePanelProvider = class {
    */
   updateView() {
     if (this.view) {
+      const activeSession = this.getActiveSession();
       this.view.webview.postMessage({
         type: "update",
         explanation: this.currentExplanation,
         history: this.history.slice(0, 10),
-        conversation: this.conversation,
+        conversation: activeSession.messages,
+        sessions: this.sessions.map((s) => ({
+          id: s.id,
+          title: s.title,
+          updatedAt: s.updatedAt,
+          createdAt: s.createdAt,
+          messageCount: s.messages.length
+        })),
+        activeSessionId: this.currentSessionId,
         contextHints: this.getContextHints(),
         busy: this.currentExplanation?.isLoading || this.askInFlight,
-        pythonFocus: this.pythonFocus
+        pythonFocus: this.pythonFocus,
+        allowFileWrites: this.allowFileWrites,
+        fileOptions: this.fileOptions
       });
     }
   }
+  loadSessions() {
+    const stored = this.context.globalState.get(
+      SESSION_STORE_KEY,
+      []
+    );
+    this.sessions = Array.isArray(stored) ? stored : [];
+    if (this.sessions.length === 0) {
+      const first = this.createSession("Session 1");
+      this.sessions.push(first);
+    }
+    const storedActive = this.context.globalState.get(
+      SESSION_ACTIVE_KEY,
+      null
+    );
+    if (storedActive && this.sessions.some((s) => s.id === storedActive)) {
+      this.currentSessionId = storedActive;
+    } else {
+      this.currentSessionId = this.sessions[0].id;
+    }
+    void this.persistSessions();
+  }
+  createSession(title) {
+    const now = Date.now();
+    return {
+      id: this.generateId(),
+      title: title ?? `Session ${this.sessions.length + 1}`,
+      createdAt: now,
+      updatedAt: now,
+      messages: []
+    };
+  }
+  getActiveSession() {
+    if (this.currentSessionId) {
+      const existing = this.sessions.find((s) => s.id === this.currentSessionId);
+      if (existing) return existing;
+    }
+    const fallback = this.createSession("Session 1");
+    this.sessions.unshift(fallback);
+    this.currentSessionId = fallback.id;
+    void this.persistSessions();
+    return fallback;
+  }
+  setActiveSession(id) {
+    const found = this.sessions.find((s) => s.id === id);
+    if (!found) return;
+    this.currentSessionId = id;
+    found.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  addSession(title) {
+    const session = this.createSession(title);
+    this.sessions.unshift(session);
+    this.currentSessionId = session.id;
+    void this.persistSessions();
+  }
+  renameSession(id, title) {
+    const session = this.sessions.find((s) => s.id === id);
+    if (!session) return;
+    session.title = title.trim() || session.title;
+    session.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  clearCurrentConversation() {
+    const session = this.getActiveSession();
+    session.messages = [];
+    session.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  persistSessions() {
+    this.sessions = this.sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+    return Promise.all([
+      this.context.globalState.update(SESSION_STORE_KEY, this.sessions),
+      this.context.globalState.update(SESSION_ACTIVE_KEY, this.currentSessionId)
+    ]).then(() => void 0);
+  }
+  updateSessionConversation(updater) {
+    const session = this.getActiveSession();
+    updater(session.messages);
+    session.updatedAt = Date.now();
+    void this.persistSessions();
+    return session.messages;
+  }
+  async loadFileOptions() {
+    try {
+      const uris = await vscode10.workspace.findFiles(
+        "**/*",
+        "**/{node_modules,.git,.svn,.hg,.DS_Store,.venv,.tox,.next,out,dist,build,tmp,temp}/**",
+        120
+      );
+      this.fileOptions = uris.map((u) => vscode10.workspace.asRelativePath(u, false)).filter((p) => p && !p.endsWith("/"));
+      this.updateView();
+    } catch {
+    }
+  }
   getContextHints() {
-    const editor = vscode9.window.activeTextEditor;
+    const editor = vscode10.window.activeTextEditor;
     if (!editor) {
       return {
         hasSelection: false,
@@ -27534,15 +27597,17 @@ var SidePanelProvider = class {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
   replaceConversationEntry(id, replacement) {
-    const idx = this.conversation.findIndex((c) => c.id === id);
-    if (idx >= 0) {
-      this.conversation[idx] = replacement;
-    }
+    this.updateSessionConversation((messages) => {
+      const idx = messages.findIndex((c) => c.id === id);
+      if (idx >= 0) {
+        messages[idx] = replacement;
+      }
+    });
   }
-  trimConversation() {
+  trimConversation(messages) {
     const MAX_ENTRIES = 40;
-    if (this.conversation.length > MAX_ENTRIES) {
-      this.conversation = this.conversation.slice(-MAX_ENTRIES);
+    if (messages.length > MAX_ENTRIES) {
+      messages.splice(0, messages.length - MAX_ENTRIES);
     }
   }
   /**
@@ -27555,8 +27620,8 @@ var SidePanelProvider = class {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-  <title>ghia-ai panel</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-webview-resource: https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <title>PyAid panel</title>
   <style>
     :root {
       --surface: var(--vscode-sideBar-background);
@@ -27603,7 +27668,7 @@ var SidePanelProvider = class {
       flex: 1;
     }
     .title-row { display: flex; align-items: center; gap: 6px; }
-    .title h1 { font-size: 14px; margin: 0; }
+    .title h1 { font-size: 14px; margin: 0; display:flex; align-items:center; gap:6px; }
     .subtitle { color: var(--muted); font-size: 12px; }
     .pill {
       border: 1px solid var(--border);
@@ -27682,6 +27747,9 @@ var SidePanelProvider = class {
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .chat-stream { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; padding-right: 4px; }
+    .session-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0 4px; }
+    .session-select { flex: 1; border: 1px solid var(--border); background: var(--vscode-editor-background); color: var(--vscode-foreground); border-radius: 6px; padding: 8px; font-family: var(--vscode-font-family); }
+    .session-actions { display: flex; gap: 6px; }
     .bubble {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -27708,6 +27776,7 @@ var SidePanelProvider = class {
     .composer-row { display: flex; gap: 8px; align-items: flex-start; }
     .composer-row button { height: 38px; }
     .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    datalist option { color: var(--vscode-foreground); }
     .scope-row {
       display: flex;
       align-items: center;
@@ -27730,6 +27799,9 @@ var SidePanelProvider = class {
     .history-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
     .history-item { cursor: pointer; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--vscode-editor-background); }
     .history-item:hover { border-color: var(--accent); }
+    .code-block { position: relative; margin: 8px 0; }
+    .code-block pre { margin: 0; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--vscode-editor-background); overflow-x: auto; }
+    .code-block button.copy-btn { position: absolute; top: 6px; right: 6px; border: 1px solid var(--border); background: var(--card); cursor: pointer; }
   </style>
 </head>
 <body>
@@ -27738,13 +27810,16 @@ var SidePanelProvider = class {
       <div class="title">
         <div class="title-row">
           <span class="pill">Panel</span>
-          <h1>\u{1F9E0} ghia-ai</h1>
+          <h1><img src="${this.iconUrl}" alt="PyAid" style="width:18px;height:18px;border-radius:4px;"> PyAid</h1>
         </div>
         <div class="subtitle">Ask, explain, and keep context pinned like a sidekick.</div>
       </div>
       <div class="header-actions">
         <button class="btn ghost" onclick="refreshExplanation()" id="refresh-btn">Refresh</button>
         <button class="btn primary" onclick="explainSelection()">Explain Selection</button>
+        <button class="btn ghost" id="write-toggle" onclick="toggleWritePermission()">
+          ${this.allowFileWrites ? "Allow writes: On" : "Allow writes: Off"}
+        </button>
       </div>
     </div>
 
@@ -27759,7 +27834,14 @@ var SidePanelProvider = class {
     <div class="section">
       <div class="section-title">
         <span>Conversation</span>
-        <button class="btn ghost" onclick="clearHistory()" style="font-size:11px; padding:4px 8px;">Clear</button>
+        <button class="btn ghost" onclick="clearHistory()" style="font-size:11px; padding:4px 8px;">Clear Session</button>
+      </div>
+      <div class="session-bar">
+        <select id="session-select" class="session-select"></select>
+        <div class="session-actions">
+          <button class="btn ghost" onclick="newSession()">New</button>
+          <button class="btn ghost" onclick="renameSession()">Rename</button>
+        </div>
       </div>
       <div id="chat-stream" class="chat-stream"></div>
     </div>
@@ -27776,14 +27858,22 @@ var SidePanelProvider = class {
         <span class="hint">Python-heavy answers when on; general answers when off.</span>
       </div>
       <form id="composer" class="composer">
-        <div class="chips">
+        <div class="hint" id="context-hint"></div>
+        <div class="chips" id="write-controls" style="display:${this.allowFileWrites ? "flex" : "none"}">
           <label class="chip">
-            <input type="checkbox" id="include-selection"> Selection
+            Target file:
+            <input list="file-options" type="text" id="target-file" placeholder="e.g. start.py" style="width:180px;">
+            <datalist id="file-options"></datalist>
           </label>
           <label class="chip">
-            <input type="checkbox" id="include-file" checked> Current file
+            Mode:
+            <select id="write-mode">
+              <option value="append">Append</option>
+              <option value="replace">Replace</option>
+              <option value="remove">Remove PyAid blocks</option>
+            </select>
           </label>
-          <span class="hint" id="context-hint"></span>
+          <span class="hint">Enabled when writes are allowed.</span>
         </div>
         <div class="composer-row">
           <textarea id="question" rows="3" placeholder="Ask about this code, a bug, or a concept\u2026"></textarea>
@@ -27803,20 +27893,27 @@ var SidePanelProvider = class {
 
   <script>
     const vscode = acquireVsCodeApi();
-    let latestContextHints = { hasSelection: false, selectionLabel: null, hasFile: false, fileName: null };
+    let latestContextHints = { fileName: null };
     let latestConversation = [];
     let thinkTimer = null;
     let thinkingIndex = 0;
     const thinkingEmojis = ["\u{1F914}", "\u{1F300}", "\u{1F4AD}", "\u2728", "\u231B"];
+    let allowWrites = false;
+    let messageFileOptions = [];
+    let latestSessions = [];
+    let activeSessionId = null;
 
     document.getElementById('composer').addEventListener('submit', (event) => {
       event.preventDefault();
       const question = document.getElementById('question').value;
-      const includeSelection = document.getElementById('include-selection').checked;
-      const includeFile = document.getElementById('include-file').checked;
-      vscode.postMessage({ command: 'ask', question, includeSelection, includeFile });
+      const includeSelection = true;
+      const includeFile = true;
+      const targetPath = document.getElementById('target-file').value || undefined;
+      const writeMode = document.getElementById('write-mode').value || "append";
+      vscode.postMessage({ command: 'ask', question, includeSelection, includeFile, targetPath, writeMode });
       document.getElementById('question').value = '';
     });
+    document.getElementById('session-select').addEventListener('change', handleSessionChange);
 
     function explainSelection() { vscode.postMessage({ command: 'explainSelection' }); }
     function copyExplanation() { vscode.postMessage({ command: 'copy' }); }
@@ -27828,11 +27925,71 @@ var SidePanelProvider = class {
       const section = document.getElementById('history-section');
       section.classList.toggle('open');
     }
+    function toggleWritePermission() {
+      vscode.postMessage({ command: 'toggleWritePermission', allow: !allowWrites });
+    }
+
+    function newSession() {
+      const defaultName = 'Session ' + String((latestSessions?.length || 0) + 1);
+      const title = prompt('Name this session', defaultName);
+      if (title !== null) {
+        vscode.postMessage({ command: 'newSession', title });
+      }
+    }
+
+    function renameSession() {
+      if (!activeSessionId) return;
+      const current = latestSessions.find((s) => s.id === activeSessionId);
+      const title = prompt('Rename session', current?.title || '');
+      if (title !== null && title.trim().length > 0) {
+        vscode.postMessage({ command: 'renameSession', id: activeSessionId, title });
+      }
+    }
+
+    function handleSessionChange(event) {
+      const id = event.target.value;
+      if (id) {
+        vscode.postMessage({ command: 'switchSession', id });
+      }
+    }
 
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text ?? '';
       return div.innerHTML;
+    }
+
+    function renderWithCodeBlocks(text) {
+      if (!text) return "";
+      const tick = String.fromCharCode(96);
+      const fence = new RegExp(tick + tick + tick + "[\\s\\S]*?" + tick + tick + tick, "g");
+      let out = "";
+      let lastIndex = 0;
+      let match;
+      while ((match = fence.exec(text))) {
+        // text before code block
+        out += escapeHtml(text.slice(lastIndex, match.index));
+        const code = match[0].slice(3, -3).trim();
+        out +=
+          '<div class="code-block"><button class="copy-btn" data-code="' +
+          encodeURIComponent(code) +
+          '">\u{1F4CB}</button><pre><code>' +
+          escapeHtml(code) +
+          "</code></pre></div>";
+        lastIndex = match.index + match[0].length;
+      }
+      out += escapeHtml(text.slice(lastIndex));
+      return out;
+    }
+
+    function attachCopyButtons(root) {
+      root.querySelectorAll('.copy-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const encoded = btn.getAttribute('data-code') || '';
+          const decoded = decodeURIComponent(encoded);
+          navigator.clipboard.writeText(decoded);
+        });
+      });
     }
 
     function formatTime(timestamp) {
@@ -27867,13 +28024,14 @@ var SidePanelProvider = class {
 
       liveCard.className = 'card';
       liveCard.innerHTML = \`
-        <div class="explanation-text">\${escapeHtml(explanation.explanation)}</div>
+        <div class="explanation-text">\${renderWithCodeBlocks(explanation.explanation)}</div>
         \${codePreview}
         <div class="actions">
           <button class="btn" onclick="copyExplanation()">\u{1F4CB} Copy</button>
           <button class="btn" onclick="refreshExplanation()">\u{1F504} Refresh</button>
         </div>
       \`;
+      attachCopyButtons(liveCard);
       hint.textContent = explanation.languageId ? explanation.languageId : '';
     }
 
@@ -27889,14 +28047,15 @@ var SidePanelProvider = class {
         const status = entry.pending
           ? ' (' + thinkingEmojis[thinkingIndex % thinkingEmojis.length] + ' thinking\u2026)'
           : '';
-        const displayContent = entry.content;
+        const displayContent = renderWithCodeBlocks(entry.content);
         return \`
           <div class="bubble \${entry.role}">
             <div class="meta">\${meta}\${status}</div>
-            <div class="content">\${escapeHtml(displayContent)}</div>
+            <div class="content">\${displayContent}</div>
           </div>
         \`;
       }).join('');
+      attachCopyButtons(stream);
       stream.scrollTop = stream.scrollHeight;
     }
 
@@ -27917,16 +28076,35 @@ var SidePanelProvider = class {
       \`).join('');
     }
 
+    function renderSessions(sessions, selectedId) {
+      latestSessions = sessions || [];
+      activeSessionId = selectedId || (latestSessions[0]?.id ?? null);
+      const select = document.getElementById('session-select');
+      if (!select) return;
+      select.innerHTML = latestSessions
+        .map((s) => {
+          const time = new Date(s.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const selected = s.id === activeSessionId ? 'selected' : '';
+          return '<option value= + s.id +  ' + selected + '>' + escapeHtml(s.title) + ' \u2022 ' + time + '</option>';
+        })
+        .join('');
+      select.value = activeSessionId || '';
+    }
+
     function renderContextHints(hints) {
       latestContextHints = hints || latestContextHints;
-      const selectionBox = document.getElementById('include-selection');
-      const fileBox = document.getElementById('include-file');
-      selectionBox.disabled = !latestContextHints.hasSelection;
-      if (!latestContextHints.hasSelection) selectionBox.checked = false;
-      document.getElementById('context-hint').textContent = latestContextHints.selectionLabel || latestContextHints.fileName || '';
+      const targetInput = document.getElementById('target-file');
+      const modeSelect = document.getElementById('write-mode');
+      const datalist = document.getElementById('file-options');
+      document.getElementById('context-hint').textContent = latestContextHints.fileName || '';
       document.getElementById('refresh-btn').style.display = 'inline-flex';
-      fileBox.disabled = !latestContextHints.hasFile;
-      if (!latestContextHints.hasFile) fileBox.checked = false;
+      targetInput.disabled = !allowWrites;
+      modeSelect.disabled = !allowWrites;
+      if (datalist && Array.isArray(messageFileOptions)) {
+        datalist.innerHTML = messageFileOptions
+          .map((opt) => '<option value="' + opt + '"></option>')
+          .join('');
+      }
     }
 
     function setBusy(isBusy) {
@@ -27947,15 +28125,35 @@ var SidePanelProvider = class {
       btn.classList.toggle('primary', pythonOn);
     }
 
+    function setWriteToggle(enabled) {
+      allowWrites = !!enabled;
+      const btn = document.getElementById('write-toggle');
+      if (btn) {
+        btn.textContent = enabled ? 'Allow writes: On' : 'Allow writes: Off';
+        btn.classList.toggle('primary', enabled);
+      }
+      const writeControls = document.getElementById('write-controls');
+      if (writeControls) {
+        writeControls.style.display = enabled ? 'flex' : 'none';
+      }
+      const tgt = document.getElementById('target-file');
+      const mode = document.getElementById('write-mode');
+      if (tgt) tgt.disabled = !enabled;
+      if (mode) mode.disabled = !enabled;
+    }
+
     window.addEventListener('message', event => {
       const message = event.data;
       if (message.type === 'update') {
         renderExplanation(message.explanation);
+        renderSessions(message.sessions, message.activeSessionId);
         renderConversation(message.conversation);
         renderHistory(message.history);
         renderContextHints(message.contextHints);
         setBusy(!!message.busy);
         setScope(!!message.pythonFocus);
+        messageFileOptions = message.fileOptions || [];
+        setWriteToggle(!!message.allowFileWrites);
       }
     });
 
@@ -27984,54 +28182,265 @@ var SidePanelProvider = class {
    */
   async toggleScope() {
     this.pythonFocus = !this.pythonFocus;
-    await vscode9.workspace.getConfiguration("ghiaAI").update("askPythonMode", this.pythonFocus, vscode9.ConfigurationTarget.Global);
+    await vscode10.workspace.getConfiguration("pyaid").update("askPythonMode", this.pythonFocus, vscode10.ConfigurationTarget.Global);
     this.updateView();
+  }
+  async setAllowFileWrites(enabled) {
+    this.allowFileWrites = enabled;
+    await this.context.globalState.update(ALLOW_WRITE_KEY, enabled);
+    this.updateView();
+  }
+  /**
+   * Writes a snippet directly into the active editor when possible.
+   * Returns true if an edit was applied (and saved), false otherwise.
+   */
+  async writeSnippetToEditor(snippet, mode) {
+    if (mode === "remove") return false;
+    const editor = vscode10.window.activeTextEditor;
+    const doc = editor?.document;
+    if (!editor || !doc) return false;
+    const edit = new vscode10.WorkspaceEdit();
+    const uri = doc.uri;
+    if (mode === "replace") {
+      if (editor.selection && !editor.selection.isEmpty) {
+        edit.replace(uri, editor.selection, snippet);
+      } else {
+        const lastLine = doc.lineCount - 1;
+        const fullRange = new vscode10.Range(
+          new vscode10.Position(0, 0),
+          new vscode10.Position(
+            lastLine,
+            doc.lineAt(Math.max(lastLine, 0)).text.length
+          )
+        );
+        edit.replace(uri, fullRange, snippet);
+      }
+    } else {
+      const insertPos = editor.selection?.end ?? new vscode10.Position(
+        doc.lineCount,
+        doc.lineAt(Math.max(doc.lineCount - 1, 0)).text.length
+      );
+      const toInsert = snippet.endsWith("\n") ? snippet : snippet + "\n";
+      edit.insert(uri, insertPos, toInsert);
+    }
+    const applied = await vscode10.workspace.applyEdit(edit);
+    if (applied) {
+      await doc.save().catch(() => {
+      });
+      void vscode10.window.showInformationMessage("PyAid wrote to editor");
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Centralized write logic: append, replace (after removing existing PyAid blocks),
+   * or remove previously written PyAid blocks.
+   */
+  async maybeWriteAnswer(answer, options) {
+    if (!this.allowFileWrites) return;
+    const mode = options.writeMode ?? "append";
+    const targetPath = this.resolveTargetPath(options.targetPath);
+    const snippet = mode === "remove" ? "" : this.extractCodeSnippet(answer) ?? answer;
+    if (mode === "remove") {
+      if (!targetPath) {
+        void vscode10.window.showWarningMessage(
+          "PyAid: Choose a target file to remove PyAid code from."
+        );
+        return;
+      }
+      await removePyAidBlocks(targetPath).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode10.window.showErrorMessage(`PyAid remove failed: ${msg}`);
+      });
+      return;
+    }
+    if (!snippet || snippet.trim().length === 0) {
+      void vscode10.window.showWarningMessage("PyAid: No code block found to write.");
+      return;
+    }
+    const payload = targetPath ? this.wrapWithMarkers(snippet, targetPath) : snippet;
+    if (targetPath) {
+      if (mode === "replace") {
+        await removePyAidBlocks(targetPath).catch(() => {
+        });
+      }
+      const finalPayload = mode === "append" ? payload.endsWith("\n") ? payload : payload + "\n" : payload;
+      await writeWithConsent(targetPath, finalPayload, mode, true).catch(
+        (err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          vscode10.window.showErrorMessage(`PyAid write failed: ${msg}`);
+        }
+      );
+      return;
+    }
+    await this.writeSnippetToEditor(snippet, mode);
   }
   dispose() {
     this.disposables.forEach((d) => d.dispose());
   }
 };
 var FloatingPanelProvider = class {
-  constructor(extensionUri) {
+  constructor(extensionUri, context) {
     this.extensionUri = extensionUri;
+    this.context = context;
+    this.allowFileWrites = this.context.globalState.get(
+      ALLOW_WRITE_KEY,
+      false
+    );
+    this.loadSessions();
+    void this.loadFileOptions();
   }
   aiService = new AIService();
   cacheService = new CacheService();
   contextExtractor = new ContextExtractor();
   panel = null;
   disposables = [];
-  // In-panel chat history for context across questions
-  conversation = [];
   pythonFocus = true;
-  /**
-   * Opens an empty ghia-ai panel to the right, sized evenly with the editor.
-   * Useful for pre-opening the space before asking a question.
-   */
+  allowFileWrites = false;
+  fileOptions = [];
+  iconUrl = "";
+  cspSource = "";
+  sessions = [];
+  activeSessionId = null;
+  loadSessions() {
+    const stored = this.context.globalState.get(
+      FLOATING_SESSION_STORE_KEY,
+      []
+    );
+    this.sessions = Array.isArray(stored) ? stored : [];
+    if (this.sessions.length === 0) {
+      const session = this.createSession("Session 1");
+      this.sessions.push(session);
+    }
+    const active = this.context.globalState.get(
+      FLOATING_SESSION_ACTIVE_KEY,
+      null
+    );
+    if (active && this.sessions.some((s) => s.id === active)) {
+      this.activeSessionId = active;
+    } else {
+      this.activeSessionId = this.sessions[0].id;
+    }
+    void this.persistSessions();
+  }
+  createSession(title) {
+    const now = Date.now();
+    return {
+      id: this.generateId(),
+      title: title ?? `Session ${this.sessions.length + 1}`,
+      createdAt: now,
+      updatedAt: now,
+      messages: []
+    };
+  }
+  getActiveSession() {
+    if (this.activeSessionId) {
+      const found = this.sessions.find((s) => s.id === this.activeSessionId);
+      if (found) return found;
+    }
+    const fallback = this.createSession("Session 1");
+    this.sessions.unshift(fallback);
+    this.activeSessionId = fallback.id;
+    void this.persistSessions();
+    return fallback;
+  }
+  updateSessionMessages(updater) {
+    const session = this.getActiveSession();
+    updater(session.messages);
+    this.trimMessages(session.messages);
+    session.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  addSession(title) {
+    const session = this.createSession(title);
+    this.sessions.unshift(session);
+    this.activeSessionId = session.id;
+    void this.persistSessions();
+  }
+  switchSession(id) {
+    const found = this.sessions.find((s) => s.id === id);
+    if (!found) return;
+    this.activeSessionId = id;
+    found.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  renameSession(id, title) {
+    const found = this.sessions.find((s) => s.id === id);
+    if (!found) return;
+    const nextTitle = title.trim();
+    if (!nextTitle) return;
+    found.title = nextTitle;
+    found.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  deleteSession(id) {
+    const idx = this.sessions.findIndex((s) => s.id === id);
+    if (idx < 0) return;
+    this.sessions.splice(idx, 1);
+    if (this.sessions.length === 0) {
+      const fallback = this.createSession("Session 1");
+      this.sessions.push(fallback);
+      this.activeSessionId = fallback.id;
+    } else if (this.activeSessionId === id) {
+      this.activeSessionId = this.sessions[0].id;
+    }
+    void this.persistSessions();
+  }
+  clearActiveSession() {
+    const session = this.getActiveSession();
+    session.messages = [];
+    session.updatedAt = Date.now();
+    void this.persistSessions();
+  }
+  persistSessions() {
+    this.sessions = this.sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt);
+    return Promise.all([
+      this.context.globalState.update(FLOATING_SESSION_STORE_KEY, this.sessions),
+      this.context.globalState.update(FLOATING_SESSION_ACTIVE_KEY, this.activeSessionId)
+    ]).then(() => void 0);
+  }
+  trimMessages(messages) {
+    const MAX = 60;
+    if (messages.length > MAX) {
+      messages.splice(0, messages.length - MAX);
+    }
+  }
+  generateId() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+  async loadFileOptions() {
+    try {
+      const uris = await vscode10.workspace.findFiles(
+        "**/*",
+        "**/{node_modules,.git,.svn,.hg,.DS_Store,.venv,.tox,.next,out,dist,build,tmp,temp}/**",
+        120
+      );
+      this.fileOptions = uris.map((u) => vscode10.workspace.asRelativePath(u, false)).filter((f) => f && !f.endsWith("/"));
+    } catch {
+      this.fileOptions = [];
+    }
+  }
   openPanel() {
-    const config = vscode9.workspace.getConfiguration("ghiaAI");
+    const config = vscode10.workspace.getConfiguration("pyaid");
     this.pythonFocus = config.get("askPythonMode", true);
     this.ensurePanel();
-    this.panel.webview.html = this.getWelcomeHtml();
+    this.panel.webview.html = this.renderChatHtml();
     this.evenEditorWidths();
   }
-  /**
-   * Shows explanation in a floating webview panel beside the editor.
-   */
   async showExplanation(code, context) {
-    const editor = vscode9.window.activeTextEditor;
+    const editor = vscode10.window.activeTextEditor;
     if (!editor && !code) {
-      vscode9.window.showWarningMessage("No code to explain");
+      vscode10.window.showWarningMessage("No code to explain");
       return;
     }
-    if (!code) {
-      const document = editor.document;
+    if (!code && editor) {
       const selection = editor.selection;
       if (!selection.isEmpty) {
-        code = document.getText(selection).trim();
+        code = editor.document.getText(selection).trim();
         context = "";
       } else {
         const extracted = this.contextExtractor.extract(
-          document,
+          editor.document,
           selection.active
         );
         code = extracted.code;
@@ -28039,38 +28448,68 @@ var FloatingPanelProvider = class {
       }
     }
     if (!code || code.length === 0) {
-      vscode9.window.showWarningMessage("No code selected");
+      vscode10.window.showWarningMessage("No code selected");
       return;
     }
     this.ensurePanel();
-    this.panel.reveal(vscode9.ViewColumn.Beside);
+    this.panel.reveal(vscode10.ViewColumn.Beside);
     this.evenEditorWidths();
-    this.panel.webview.html = this.getLoadingHtml(code);
     const languageId = editor?.document.languageId ?? "plaintext";
+    const fileLabel = editor?.document.fileName.split("/").pop() ?? "selection";
+    const userPrompt = `Explain ${fileLabel} (${languageId})`;
+    const userEntry = {
+      id: this.generateId(),
+      role: "user",
+      content: userPrompt,
+      timestamp: Date.now()
+    };
+    const placeholder = {
+      id: this.generateId(),
+      role: "assistant",
+      content: "Thinking...",
+      timestamp: Date.now(),
+      pending: true
+    };
+    this.updateSessionMessages((messages) => {
+      messages.push(userEntry, placeholder);
+    });
+    this.panel.webview.html = this.renderChatHtml(true);
     let explanation = this.cacheService.get(code);
     if (!explanation) {
       try {
-        explanation = await this.aiService.explain(
-          code,
-          languageId,
-          context ?? ""
-        );
+        explanation = await this.aiService.explain(code, languageId, context ?? "");
         this.cacheService.set(code, explanation);
       } catch (err) {
         explanation = `Error: ${err instanceof Error ? err.message : String(err)}`;
       }
     }
-    this.panel.webview.html = this.getResultHtml(code, explanation, languageId);
+    this.updateSessionMessages((messages) => {
+      const idx = messages.findIndex((m) => m.id === placeholder.id);
+      if (idx >= 0) {
+        messages[idx] = {
+          ...placeholder,
+          content: `${explanation}
+
+Code:
+\`\`\`${languageId}
+${code}
+\`\`\``,
+          pending: false,
+          timestamp: Date.now()
+        };
+      }
+    });
+    this.panel.webview.html = this.renderChatHtml();
   }
   ensurePanel() {
     if (this.panel) {
-      this.panel.reveal(vscode9.ViewColumn.Beside);
+      this.panel.reveal(vscode10.ViewColumn.Beside);
       return;
     }
-    this.panel = vscode9.window.createWebviewPanel(
-      "ghia-ai.floatingPanel",
-      "\u{1F9E0} ghia-ai",
-      vscode9.ViewColumn.Beside,
+    this.panel = vscode10.window.createWebviewPanel(
+      "pyaid.floatingPanel",
+      "PyAid",
+      vscode10.ViewColumn.Beside,
       {
         enableScripts: true,
         retainContextWhenHidden: true
@@ -28083,176 +28522,386 @@ var FloatingPanelProvider = class {
       null,
       this.disposables
     );
+    this.iconUrl = this.panel.webview.asWebviewUri(vscode10.Uri.joinPath(this.extensionUri, "media", "pyaid.png")).toString();
+    this.cspSource = this.panel.webview.cspSource;
     this.panel.webview.onDidReceiveMessage(
       async (message) => {
-        if (message.command === "copy" && message.text) {
-          await vscode9.env.clipboard.writeText(message.text);
-          vscode9.window.showInformationMessage("Copied to clipboard");
-        } else if (message.command === "ask" && typeof message.text === "string") {
-          await this.handleAsk(message.text, {
-            includeSelection: Boolean(message.includeSelection),
-            includeFile: Boolean(message.includeFile)
-          });
-        } else if (message.command === "clear") {
-          this.conversation = [];
-          this.panel.webview.html = this.renderChatHtml();
-        } else if (message.command === "toggleScope") {
-          await this.toggleScope();
+        switch (message.command) {
+          case "copy":
+            if (typeof message.text === "string") {
+              await vscode10.env.clipboard.writeText(message.text);
+              void vscode10.window.showInformationMessage("Copied to clipboard");
+            }
+            break;
+          case "ask":
+            if (typeof message.text === "string") {
+              await this.handleAsk(message.text, {
+                includeSelection: Boolean(message.includeSelection),
+                includeFile: Boolean(message.includeFile),
+                targetPath: message.targetPath,
+                writeMode: message.writeMode
+              });
+            }
+            break;
+          case "clearSession":
+            this.clearActiveSession();
+            this.panel.webview.html = this.renderChatHtml();
+            break;
+          case "newSession":
+            this.addSession(
+              typeof message.title === "string" ? message.title : void 0
+            );
+            this.panel.webview.html = this.renderChatHtml();
+            break;
+          case "switchSession":
+            if (typeof message.id === "string") {
+              this.switchSession(message.id);
+              this.panel.webview.html = this.renderChatHtml();
+            }
+            break;
+          case "renameSession":
+            if (typeof message.id === "string" && typeof message.title === "string") {
+              this.renameSession(message.id, message.title);
+              this.panel.webview.html = this.renderChatHtml();
+            }
+            break;
+          case "deleteSession":
+            if (typeof message.id === "string") {
+              this.deleteSession(message.id);
+              this.panel.webview.html = this.renderChatHtml();
+            }
+            break;
+          case "toggleScope":
+            await this.toggleScope();
+            break;
+          case "toggleWritePermission":
+            await this.setAllowFileWrites(
+              typeof message.allow === "boolean" ? message.allow : !this.allowFileWrites
+            );
+            break;
+          case "explainSelection":
+            await this.showExplanation();
+            break;
         }
       },
       null,
       this.disposables
     );
   }
-  evenEditorWidths() {
-    void vscode9.commands.executeCommand("workbench.action.evenEditorWidths");
+  async setAllowFileWrites(enabled) {
+    this.allowFileWrites = enabled;
+    await this.context.globalState.update(ALLOW_WRITE_KEY, enabled);
+    if (this.panel) {
+      this.panel.webview.html = this.renderChatHtml();
+    }
   }
-  getWelcomeHtml() {
+  evenEditorWidths() {
+    void vscode10.commands.executeCommand("workbench.action.evenEditorWidths");
+  }
+  renderChatHtml(showTyping = false) {
+    const active = this.getActiveSession();
+    const sessionsHtml = this.sessions.map((session) => {
+      const activeClass = session.id === this.activeSessionId ? "active" : "";
+      const encodedTitle = encodeURIComponent(session.title);
+      return `<div class="session-row ${activeClass}"><button class="session-item" data-session="${session.id}" data-title="${encodedTitle}"><span>${this.escapeHtml(
+        session.title
+      )}</span><small>${session.messages.length}</small></button><button class="session-delete" data-delete-session="${session.id}" aria-label="Delete session">X</button></div>`;
+    }).join("");
+    const messagesHtml = active.messages.map((message) => {
+      const who = message.role === "user" ? "You" : "PyAid";
+      const bubbleClass = message.role === "user" ? "user" : "assistant";
+      const pending = message.pending ? " pending" : "";
+      const content = this.markdownToHtml(message.content);
+      const encoded = encodeURIComponent(message.content);
+      return `<article class="msg ${bubbleClass}${pending}"><header><span>${who}</span><time>${new Date(
+        message.timestamp
+      ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></header><div class="content">${content}</div><footer><button type="button" class="mini" data-copy="${encoded}">Copy</button></footer></article>`;
+    }).join("");
+    const typingHtml = showTyping ? `<article class="msg assistant pending"><header><span>PyAid</span><time>now</time></header><div class="content"><p>Thinking...</p></div></article>` : "";
+    const optionsHtml = this.fileOptions.map((opt) => `<option value="${this.escapeHtml(opt)}"></option>`).join("");
     return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src vscode-webview-resource: https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
   <style>
-    body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 1.5rem; line-height: 1.6; }
-    h1 { margin: 0 0 0.25rem; }
-    p { margin: 0 0 1rem; }
-    code { background: var(--vscode-editorWidget-background); padding: 0.15rem 0.3rem; border-radius: 4px; }
-    .chips { display: flex; gap: 8px; align-items: center; margin: 0 0 0.5rem; }
-    .scope-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0.5rem 0; }
-    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--vscode-input-border); background: var(--vscode-editorWidget-background); font-size: 12px; }
-    textarea { width: 100%; box-sizing: border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 6px; padding: 8px; font-family: var(--vscode-editor-font-family); resize: vertical; }
-    button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 1px solid var(--vscode-button-border); padding: 8px 12px; border-radius: 6px; cursor: pointer; }
-    button:hover { background: var(--vscode-button-hoverBackground); }
-    .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-    .btn { border: 1px solid var(--vscode-button-border); background: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background)); color: var(--vscode-button-foreground); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-    .btn.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-    .btn.ghost { background: var(--vscode-editorWidget-background); }
-  </style>
-</head>
-<body>
-  <h1>\u{1F9E0} ghia-ai</h1>
-  <p>Ask a question or select code, then click Send.</p>
-  <div class="scope-row">
-    <button class="btn ghost" id="scope-toggle-inline" aria-pressed="${this.pythonFocus ? "true" : "false"}">
-      ${this.pythonFocus ? "Python focus: On" : "Python focus: Off"}
-    </button>
-    <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Python-heavy answers when on; general answers when off.</span>
-  </div>
-  <form id="ask-form">
-    <div class="chips">
-      <label class="chip"><input type="checkbox" id="include-selection" checked> Selection</label>
-      <label class="chip"><input type="checkbox" id="include-file" checked> Current file</label>
-    </div>
-    <textarea id="ask-input" rows="4" placeholder="How does this function work? What is causing this bug?"></textarea>
-    <div class="row">
-      <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Answers render here in this wide panel.</span>
-      <button type="submit">Send</button>
-    </div>
-  </form>
-
-  <script>
-    const vscode = acquireVsCodeApi();
-    document.getElementById('scope-toggle-inline')?.addEventListener('click', () => vscode.postMessage({ command: 'toggleScope' }));
-    document.getElementById('ask-form').addEventListener('submit', (event) => {
-      event.preventDefault();
-      const text = document.getElementById('ask-input').value;
-      const includeSelection = document.getElementById('include-selection').checked;
-      const includeFile = document.getElementById('include-file').checked;
-      vscode.postMessage({ command: 'ask', text, includeSelection, includeFile });
-    });
-  </script>
-</body>
-</html>`;
-  }
-  renderChatHtml(showTyping = false) {
-    const messagesHtml = this.conversation.map((m) => {
-      const cls = m.role === "user" ? "bubble user" : "bubble ai";
-      return `<div class="${cls}">${this.markdownToHtml(m.content)}</div>`;
-    }).join("");
-    const typingHtml = showTyping ? `<div class="typing" id="typing-text">\u{1F914} thinking\u2026</div>` : "";
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { margin:0; padding:16px; font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-foreground); }
-    h1 { margin: 0 0 8px; display:flex; gap:8px; align-items:center; }
-    .chat { display:flex; flex-direction:column; gap:10px; margin: 12px 0 16px; }
-    .bubble { padding:10px 12px; border-radius:10px; border:1px solid var(--vscode-panel-border); }
-    .bubble.user { background: var(--vscode-textBlockQuote-background); }
-    .bubble.ai { background: var(--vscode-editorWidget-background); }
-    .typing { font-size: 12px; color: var(--vscode-descriptionForeground); }
-    .composer { display:flex; flex-direction:column; gap:8px; }
-    .chips { display:flex; gap:8px; flex-wrap:wrap; }
-    .chip { display:inline-flex; gap:6px; align-items:center; padding:4px 8px; border-radius:999px; border:1px solid var(--vscode-input-border); background: var(--vscode-editorWidget-background); font-size:12px; }
-    .scope-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
-    textarea { width:100%; box-sizing:border-box; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border:1px solid var(--vscode-input-border); border-radius:6px; padding:8px; font-family: var(--vscode-editor-font-family); }
-    button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border:1px solid var(--vscode-button-border); padding:8px 12px; border-radius:6px; cursor:pointer; }
-    button:hover { background: var(--vscode-button-hoverBackground); }
-    .actions { display:flex; gap:8px; align-items:center; }
-  </style>
-</head>
-<body>
-  <h1>\u{1F9E0} ghia-ai</h1>
-  <div class="chat" id="chat">${messagesHtml}${typingHtml}</div>
-  <form id="ask-form" class="composer">
-    <div class="scope-row">
-      <button class="btn ghost" id="scope-toggle-inline" aria-pressed="${this.pythonFocus ? "true" : "false"}">
-        ${this.pythonFocus ? "Python focus: On" : "Python focus: Off"}
-      </button>
-      <span style="color: var(--vscode-descriptionForeground); font-size: 12px;">Python-heavy answers when on; general answers when off.</span>
-    </div>
-    <div class="chips">
-      <label class="chip"><input type="checkbox" id="include-selection" checked> Selection</label>
-      <label class="chip"><input type="checkbox" id="include-file" checked> Current file</label>
-    </div>
-    <textarea id="ask-input" rows="3" placeholder="Ask a follow-up or a new question"></textarea>
-    <div class="actions">
-      <button type="submit">Send</button>
-      <button type="button" id="clear-btn">Clear</button>
-    </div>
-  </form>
-
-  <script>
-    const vscode = acquireVsCodeApi();
-    const thinkingEmojis = ["\u{1F914}", "\u{1F300}", "\u{1F4AD}", "\u2728", "\u231B"];
-    let emojiIndex = 0;
-    document.getElementById('scope-toggle-inline')?.addEventListener('click', () => vscode.postMessage({ command: 'toggleScope' }));
-    const form = document.getElementById('ask-form');
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = document.getElementById('ask-input').value;
-      const includeSelection = document.getElementById('include-selection').checked;
-      const includeFile = document.getElementById('include-file').checked;
-      vscode.postMessage({ command: 'ask', text, includeSelection, includeFile });
-      document.getElementById('ask-input').value = '';
-    });
-    document.getElementById('clear-btn').addEventListener('click', () => {
-      vscode.postMessage({ command: 'clear' });
-    });
-
-    // Animate typing placeholder with rotating emojis while thinking
-    const typingEl = document.getElementById('typing-text');
-    if (typingEl) {
-      setInterval(() => {
-        emojiIndex = (emojiIndex + 1) % thinkingEmojis.length;
-        typingEl.textContent = thinkingEmojis[emojiIndex] + ' thinking\u2026';
-      }, 800);
+    :root {
+      --bg: #0f1318;
+      --panel: #151b22;
+      --panel-2: #1b2430;
+      --border: #2b3a4d;
+      --text: #e6edf3;
+      --muted: #98a6b8;
+      --accent: #3fb950;
+      --user: #113a5f;
+      --assistant: #18222d;
     }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "Segoe UI", "SF Pro Text", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(120% 120% at 5% 0%, #1b2a3a 0%, transparent 42%),
+        radial-gradient(120% 120% at 95% 100%, #123329 0%, transparent 46%),
+        var(--bg);
+    }
+    .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); height: 100%; }
+    .rail {
+      border-right: 1px solid var(--border);
+      background: color-mix(in srgb, var(--panel) 90%, #0a0d11);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: auto;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
+    .brand img { width: 18px; height: 18px; border-radius: 4px; }
+    .rail-actions { display: flex; gap: 6px; }
+    .session-list { display: flex; flex-direction: column; gap: 6px; }
+    .session-row { display: flex; align-items: center; gap: 6px; }
+    .session-row.active .session-item { border-color: var(--accent); background: color-mix(in srgb, var(--panel) 80%, var(--accent) 20%); }
+    .session-item {
+      flex: 1; text-align: left; border: 1px solid var(--border); background: var(--panel);
+      color: var(--text); border-radius: 10px; padding: 8px 10px; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      min-width: 0;
+    }
+    .session-item small { color: var(--muted); }
+    .session-delete {
+      width: 28px; min-width: 28px; height: 28px; padding: 0;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: #22161a; color: #f5c2c7; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .session-delete:hover { border-color: #e5534b; color: #ff938a; }
+    .main { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+    .topbar {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: color-mix(in srgb, var(--panel-2) 90%, #0c1016);
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .top-left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .chip { border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 3px 8px; font-size: 12px; }
+    .chat { padding: 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; scroll-behavior: smooth; overscroll-behavior: contain; }
+    .msg {
+      max-width: min(860px, 92%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .msg.user { margin-left: auto; background: var(--user); }
+    .msg.assistant { margin-right: auto; background: var(--assistant); }
+    .msg.pending { opacity: 0.85; }
+    .msg header { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .msg .content { white-space: pre-wrap; word-break: break-word; }
+    .msg footer { margin-top: 8px; display: flex; justify-content: flex-end; }
+    .code-block { border: 1px solid var(--border); border-radius: 10px; background: #0f1720; padding: 10px; overflow: auto; }
+    .composer {
+      border-top: 1px solid var(--border);
+      background: color-mix(in srgb, var(--panel-2) 86%, #0c1016);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    textarea {
+      width: 100%; min-height: 84px; resize: vertical;
+      border: 1px solid var(--border); background: #0f1720; color: var(--text);
+      border-radius: 10px; padding: 10px; font-family: "JetBrains Mono", "SF Mono", monospace;
+    }
+    button {
+      border: 1px solid var(--border);
+      background: #101923;
+      color: var(--text);
+      border-radius: 9px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: #175227; border-color: #2b8a3e; }
+    button.mini { padding: 4px 8px; font-size: 12px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; padding: 16px; }
+    .write-controls { display: ${this.allowFileWrites ? "flex" : "none"}; }
+    input, select {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      background: #0f1720;
+      color: var(--text);
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .rail { border-right: 0; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="rail">
+      <div class="brand"><img src="${this.iconUrl}" alt="PyAid">PyAid</div>
+      <div class="rail-actions">
+        <input type="text" id="session-title" placeholder="Session name" value="${this.escapeHtml(active.title)}" style="flex:1; min-width: 0;">
+        <button type="button" id="new-session">New</button>
+        <button type="button" id="rename-session">Rename</button>
+      </div>
+      <div class="session-list">${sessionsHtml}</div>
+      <div class="muted">Sessions are persisted across VS Code reloads.</div>
+    </aside>
+
+    <section class="main">
+      <div class="topbar">
+        <div class="top-left">
+          <span class="chip">${this.escapeHtml(active.title)}</span>
+          <button type="button" id="scope-toggle">${this.pythonFocus ? "Python Focus: On" : "Python Focus: Off"}</button>
+          <button type="button" id="write-toggle">${this.allowFileWrites ? "Writes: On" : "Writes: Off"}</button>
+          <button type="button" id="explain-selection">Explain Selection</button>
+        </div>
+        <button type="button" id="clear-session">Clear Session</button>
+      </div>
+
+      <div class="chat" id="chat">
+        ${messagesHtml || '<div class="empty">Start a conversation. Ask a Python question, debugging task, or architecture question.</div>'}
+        ${typingHtml}
+      </div>
+
+      <form id="ask-form" class="composer">
+        <div class="row write-controls" id="write-controls">
+          <label class="muted">Target file</label>
+          <input list="file-options" type="text" id="target-file" placeholder="e.g. src/main.py" style="min-width:220px;" ${this.allowFileWrites ? "" : "disabled"}>
+          <datalist id="file-options">${optionsHtml}</datalist>
+          <label class="muted">Mode</label>
+          <select id="write-mode" ${this.allowFileWrites ? "" : "disabled"}>
+            <option value="append">Append</option>
+            <option value="replace">Replace</option>
+            <option value="remove">Remove PyAid blocks</option>
+          </select>
+        </div>
+        <textarea id="ask-input" placeholder="Ask PyAid about Python, debugging, refactors, tests, or design decisions..."></textarea>
+        <div class="row">
+          <button type="submit" class="primary">Send</button>
+          <span class="muted">Context includes active selection and current file when available.</span>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+    const activeSessionId = ${JSON.stringify(this.activeSessionId)};
+    const activeSessionTitle = ${JSON.stringify(active.title)};
+
+    const chatEl = document.getElementById('chat');
+    const scrollChatToBottom = () => {
+      if (!chatEl) return;
+      chatEl.scrollTop = chatEl.scrollHeight;
+    };
+
+    requestAnimationFrame(() => scrollChatToBottom());
+    window.addEventListener('load', scrollChatToBottom);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => scrollChatToBottom());
+    }
+
+    document.querySelectorAll('[data-session]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-session');
+        if (id) vscode.postMessage({ command: 'switchSession', id });
+      });
+    });
+
+    document.querySelectorAll('[data-delete-session]').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const id = btn.getAttribute('data-delete-session');
+        if (id) vscode.postMessage({ command: 'deleteSession', id });
+      });
+    });
+
+    const sessionTitleInput = document.getElementById('session-title');
+
+    document.getElementById('new-session')?.addEventListener('click', () => {
+      const title = sessionTitleInput?.value?.trim();
+      vscode.postMessage({
+        command: 'newSession',
+        title: title && title.length > 0 ? title : undefined,
+      });
+      if (sessionTitleInput) sessionTitleInput.value = '';
+    });
+
+    document.getElementById('rename-session')?.addEventListener('click', () => {
+      if (!activeSessionId) return;
+      const title = sessionTitleInput?.value?.trim() || '';
+      if (!title) return;
+      vscode.postMessage({ command: 'renameSession', id: activeSessionId, title });
+    });
+
+    document.getElementById('clear-session')?.addEventListener('click', () => {
+      vscode.postMessage({ command: 'clearSession' });
+    });
+
+    document.getElementById('scope-toggle')?.addEventListener('click', () => {
+      vscode.postMessage({ command: 'toggleScope' });
+    });
+
+    document.getElementById('write-toggle')?.addEventListener('click', () => {
+      vscode.postMessage({ command: 'toggleWritePermission' });
+    });
+
+    document.getElementById('explain-selection')?.addEventListener('click', () => {
+      vscode.postMessage({ command: 'explainSelection' });
+    });
+
+    document.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const value = btn.getAttribute('data-copy') || '';
+        vscode.postMessage({ command: 'copy', text: decodeURIComponent(value) });
+      });
+    });
+
+    const form = document.getElementById('ask-form');
+    form?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = document.getElementById('ask-input');
+      const text = input.value || '';
+      if (!text.trim()) return;
+      const targetInput = document.getElementById('target-file');
+      const modeSelect = document.getElementById('write-mode');
+      vscode.postMessage({
+        command: 'ask',
+        text,
+        includeSelection: true,
+        includeFile: true,
+        targetPath: targetInput ? targetInput.value || undefined : undefined,
+        writeMode: modeSelect ? modeSelect.value || 'append' : 'append'
+      });
+      input.value = '';
+    });
   </script>
 </body>
 </html>`;
   }
   async handleAsk(question, opts) {
-    if (!question || !question.trim()) {
-      vscode9.window.showWarningMessage("Enter a question to ask ghia-ai.");
+    const trimmed = question?.trim();
+    if (!trimmed) {
+      void vscode10.window.showWarningMessage("Enter a question to ask PyAid.");
       return;
     }
-    const editor = vscode9.window.activeTextEditor;
+    const editor = vscode10.window.activeTextEditor;
     const doc = editor?.document;
     const selectionText = opts.includeSelection && editor && !editor.selection.isEmpty ? editor.document.getText(editor.selection).trim() : "";
-    const includeFile = opts.includeFile && doc;
-    const contextInfo = includeFile && doc ? (() => {
+    const contextInfo = opts.includeFile && doc ? (() => {
       const MAX_CHARS = 3e4;
       const full = doc.getText();
       const truncated = full.length > MAX_CHARS;
@@ -28262,15 +28911,29 @@ var FloatingPanelProvider = class {
         truncated
       };
     })() : void 0;
-    const augmentedQuestion = selectionText.length > 0 ? `${question.trim()}
+    const augmentedQuestion = selectionText.length > 0 ? `${trimmed}
 
 Selected code:
-${selectionText}` : question.trim();
+${selectionText}` : trimmed;
     if (!this.panel) {
       this.ensurePanel();
     }
-    this.conversation.push({ role: "user", content: augmentedQuestion });
-    this.conversation.push({ role: "assistant", content: "\u2026thinking" });
+    const userEntry = {
+      id: this.generateId(),
+      role: "user",
+      content: trimmed,
+      timestamp: Date.now()
+    };
+    const placeholder = {
+      id: this.generateId(),
+      role: "assistant",
+      content: "Thinking...",
+      timestamp: Date.now(),
+      pending: true
+    };
+    this.updateSessionMessages((messages) => {
+      messages.push(userEntry, placeholder);
+    });
     this.panel.webview.html = this.renderChatHtml(true);
     try {
       const historyContext = this.buildHistoryContext();
@@ -28281,24 +28944,37 @@ Current question: ${augmentedQuestion}`,
         void 0,
         this.pythonFocus
       );
-      if (this.conversation.length > 0 && this.conversation[this.conversation.length - 1].role === "assistant" && this.conversation[this.conversation.length - 1].content.startsWith("\u2026")) {
-        this.conversation.pop();
-      }
-      this.conversation.push({ role: "assistant", content: answer });
+      await this.maybeWriteAnswer(answer, opts);
+      this.updateSessionMessages((messages) => {
+        const idx = messages.findIndex((m) => m.id === placeholder.id);
+        if (idx >= 0) {
+          messages[idx] = {
+            ...placeholder,
+            content: answer,
+            pending: false,
+            timestamp: Date.now()
+          };
+        }
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (this.conversation.length > 0 && this.conversation[this.conversation.length - 1].role === "assistant" && this.conversation[this.conversation.length - 1].content.startsWith("\u2026")) {
-        this.conversation.pop();
-      }
-      this.conversation.push({
-        role: "assistant",
-        content: `Error: ${message}`
+      this.updateSessionMessages((messages) => {
+        const idx = messages.findIndex((m) => m.id === placeholder.id);
+        if (idx >= 0) {
+          messages[idx] = {
+            ...placeholder,
+            content: `Error: ${message}`,
+            pending: false,
+            timestamp: Date.now()
+          };
+        }
       });
     }
     this.panel.webview.html = this.renderChatHtml();
   }
   buildHistoryContext() {
-    const recent = this.conversation.slice(-6);
+    const active = this.getActiveSession();
+    const recent = active.messages.filter((m) => !m.pending).slice(-8);
     const lines = recent.map(
       (m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`
     );
@@ -28306,164 +28982,137 @@ Current question: ${augmentedQuestion}`,
 ${lines.join("\n")}
 ` : "";
   }
-  randomEmoji() {
-    const emojis = ["\u{1F916}", "\u2728", "\u26A1", "\u{1F9E0}", "\u{1F680}", "\u{1F4A1}", "\u{1F300}", "\u{1F3AF}", "\u{1F4DA}", "\u{1F9E9}"];
-    return emojis[Math.floor(Math.random() * emojis.length)];
+  extractCodeSnippet(answer) {
+    const fenced = answer.match(/```(?:[^\n`]*)\n([\s\S]*?)```/) ?? answer.match(/```([\s\S]*?)```/);
+    if (fenced && fenced[1]) return fenced[1].trim();
+    const inline = answer.match(/`([^`]+)`/);
+    if (inline && inline[1]) return inline[1].trim();
+    return null;
   }
-  getLoadingHtml(code) {
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body {
-      font-family: var(--vscode-font-family);
-      padding: 20px;
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
+  resolveTargetPath(provided) {
+    const editor = vscode10.window.activeTextEditor;
+    const workspaceFolders = vscode10.workspace.workspaceFolders;
+    if (provided && provided.trim().length > 0) {
+      const p = provided.trim();
+      if (path3.isAbsolute(p)) return p;
+      if (workspaceFolders && workspaceFolders.length > 0) {
+        return path3.join(workspaceFolders[0].uri.fsPath, p);
+      }
+      if (editor) {
+        return path3.join(path3.dirname(editor.document.uri.fsPath), p);
+      }
+      return path3.resolve(p);
     }
-    .loading {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 20px 0;
+    if (editor) {
+      return editor.document.uri.fsPath;
     }
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid var(--vscode-progressBar-background);
-      border-top: 2px solid var(--vscode-textLink-foreground);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .code-preview {
-      background: var(--vscode-textBlockQuote-background);
-      padding: 12px;
-      border-radius: 4px;
-      font-family: var(--vscode-editor-font-family);
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre;
-    }
-  </style>
-</head>
-<body>
-  <h2>\u{1F9E0} ghia-ai</h2>
-  <div class="loading">
-    <div class="spinner"></div>
-    <span id="loading-text">Generating explanation...</span>
-  </div>
-  <h3>Code</h3>
-  <pre class="code-preview">${this.escapeHtml(code)}</pre>
-
-  <script>
-    const emojis = ["\u{1F916}","\u2728","\u26A1","\u{1F9E0}","\u{1F680}","\u{1F4A1}","\u{1F300}","\u{1F3AF}","\u{1F4DA}","\u{1F9E9}"];
-    const textEl = document.getElementById('loading-text');
-    let i = 0;
-    setInterval(() => {
-      textEl.textContent = "Generating " + emojis[i % emojis.length];
-      i++;
-    }, 600);
-  </script>
-</body>
-</html>`;
+    return void 0;
   }
-  getResultHtml(code, explanation, languageId) {
-    const rendered = this.markdownToHtml(explanation);
-    const rawExplanationJson = JSON.stringify(explanation);
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body {
-      font-family: var(--vscode-font-family);
-      padding: 20px;
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
-      line-height: 1.6;
+  async writeSnippetToEditor(snippet, mode) {
+    if (mode === "remove") return false;
+    const editor = vscode10.window.activeTextEditor;
+    const doc = editor?.document;
+    if (!editor || !doc) return false;
+    const edit = new vscode10.WorkspaceEdit();
+    const uri = doc.uri;
+    if (mode === "replace") {
+      if (editor.selection && !editor.selection.isEmpty) {
+        edit.replace(uri, editor.selection, snippet);
+      } else {
+        const lastLine = doc.lineCount - 1;
+        const fullRange = new vscode10.Range(
+          new vscode10.Position(0, 0),
+          new vscode10.Position(
+            lastLine,
+            doc.lineAt(Math.max(lastLine, 0)).text.length
+          )
+        );
+        edit.replace(uri, fullRange, snippet);
+      }
+    } else {
+      const insertPos = editor.selection?.end ?? new vscode10.Position(
+        doc.lineCount,
+        doc.lineAt(Math.max(doc.lineCount - 1, 0)).text.length
+      );
+      const toInsert = snippet.endsWith("\n") ? snippet : snippet + "\n";
+      edit.insert(uri, insertPos, toInsert);
     }
-    h2 {
-      margin-top: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    const applied = await vscode10.workspace.applyEdit(edit);
+    if (applied) {
+      await doc.save().catch(() => {
+      });
+      void vscode10.window.showInformationMessage("PyAid wrote to editor");
+      return true;
     }
-    .explanation {
-      background: var(--vscode-textBlockQuote-background);
-      border-left: 3px solid var(--vscode-textLink-foreground);
-      padding: 16px;
-      margin: 16px 0;
-      border-radius: 0 4px 4px 0;
+    return false;
+  }
+  commentPrefix(filePath) {
+    const ext = path3.extname(filePath).toLowerCase();
+    if ([".py", ".sh", ".rb", ".pl"].includes(ext)) return "#";
+    if ([
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".cjs",
+      ".mjs",
+      ".java",
+      ".go",
+      ".c",
+      ".cc",
+      ".cpp",
+      ".h",
+      ".hpp"
+    ].includes(ext))
+      return "//";
+    return "//";
+  }
+  wrapWithMarkers(snippet, targetPath) {
+    const prefix = this.commentPrefix(targetPath);
+    const start = `${prefix} PyAid:start`;
+    const end = `${prefix} PyAid:end`;
+    const body = snippet.trimEnd();
+    return `${start}
+${body}
+${end}
+`;
+  }
+  async maybeWriteAnswer(answer, options) {
+    if (!this.allowFileWrites) return;
+    const mode = options.writeMode ?? "append";
+    const targetPath = this.resolveTargetPath(options.targetPath);
+    const snippet = mode === "remove" ? "" : this.extractCodeSnippet(answer) ?? answer;
+    if (mode === "remove") {
+      if (!targetPath) {
+        void vscode10.window.showWarningMessage(
+          "PyAid: Choose a target file to remove PyAid code from."
+        );
+        return;
+      }
+      await removePyAidBlocks(targetPath).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode10.window.showErrorMessage(`PyAid remove failed: ${msg}`);
+      });
+      return;
     }
-    .explanation h2, .explanation h3, .explanation h4 { margin: 0.5em 0 0.25em; }
-    .explanation p { margin: 0 0 0.6em; }
-    .code-block {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-panel-border);
-      padding: 10px;
-      border-radius: 6px;
-      font-family: var(--vscode-editor-font-family);
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre;
-      margin: 10px 0;
+    if (!snippet || snippet.trim().length === 0) {
+      void vscode10.window.showWarningMessage("PyAid: No code block found to write.");
+      return;
     }
-    .code-preview {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-panel-border);
-      padding: 12px;
-      border-radius: 4px;
-      font-family: var(--vscode-editor-font-family);
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre;
-      max-height: 200px;
-      overflow-y: auto;
+    const payload = targetPath ? this.wrapWithMarkers(snippet, targetPath) : snippet;
+    if (targetPath) {
+      if (mode === "replace") {
+        await removePyAidBlocks(targetPath).catch(() => {
+        });
+      }
+      const finalPayload = mode === "append" ? payload.endsWith("\n") ? payload : payload + "\n" : payload;
+      await writeWithConsent(targetPath, finalPayload, mode, true).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode10.window.showErrorMessage(`PyAid write failed: ${msg}`);
+      });
+      return;
     }
-    .btn {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 8px;
-    }
-    .btn:hover {
-      background: var(--vscode-button-hoverBackground);
-    }
-    .meta {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-top: 16px;
-    }
-  </style>
-</head>
-<body>
-  <h2>\u{1F9E0} ghia-ai</h2>
-  
-  <div class="explanation" id="explanation">${rendered}</div>
-  
-  <button class="btn" onclick="copyExplanation()">\u{1F4CB} Copy Explanation</button>
-  
-  <h3>Code</h3>
-  <pre class="code-preview">${this.escapeHtml(code)}</pre>
-  
-  <p class="meta">Language: ${languageId}</p>
-  
-  <script>
-    const vscode = acquireVsCodeApi();
-    const rawExplanation = ${rawExplanationJson};
-    
-    function copyExplanation() {
-      vscode.postMessage({ command: 'copy', text: rawExplanation });
-    }
-  </script>
-</body>
-</html>`;
+    await this.writeSnippetToEditor(snippet, mode);
   }
   escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -28487,15 +29136,15 @@ ${lines.join("\n")}
     html = html.replace(/^\*\s+(.*)$/gm, "<ul><li>$1</li></ul>");
     html = html.replace(/\n{2,}/g, "</p><p>");
     html = `<p>${html}</p>`;
-    html = html.replace(/__CODE_BLOCK_(\d+)__/g, (_m, i) => codeBlocks[Number(i)] ?? "");
+    html = html.replace(
+      /__CODE_BLOCK_(\d+)__/g,
+      (_m, i) => codeBlocks[Number(i)] ?? ""
+    );
     return html;
   }
-  /**
-   * Toggles Python-focused answers for free-form questions in floating panel.
-   */
   async toggleScope() {
     this.pythonFocus = !this.pythonFocus;
-    await vscode9.workspace.getConfiguration("ghiaAI").update("askPythonMode", this.pythonFocus, vscode9.ConfigurationTarget.Global);
+    await vscode10.workspace.getConfiguration("pyaid").update("askPythonMode", this.pythonFocus, vscode10.ConfigurationTarget.Global);
     if (this.panel) {
       this.panel.webview.html = this.renderChatHtml();
     }
@@ -28510,23 +29159,23 @@ ${lines.join("\n")}
 var PrototypeManager = class {
   constructor(context) {
     this.context = context;
-    void vscode10.commands.executeCommand(
+    void vscode11.commands.executeCommand(
       "setContext",
-      "ghiaAI.prototype.sidePanelEnabled",
+      "pyaid.prototype.sidePanelEnabled",
       true
     );
-    this.statusBarItem = vscode10.window.createStatusBarItem(
-      vscode10.StatusBarAlignment.Right,
+    this.statusBarItem = vscode11.window.createStatusBarItem(
+      vscode11.StatusBarAlignment.Right,
       99
     );
-    this.statusBarItem.command = "ghia-ai.prototype.selectMode";
+    this.statusBarItem.command = "pyaid.prototype.selectMode";
     this.disposables.push(this.statusBarItem);
     this.initializeProviders();
     this.registerCommands();
     this.loadConfiguration();
     this.disposables.push(
-      vscode10.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration("ghiaAI.prototype")) {
+      vscode11.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration("pyaid.prototype")) {
           this.loadConfiguration();
         }
       })
@@ -28534,14 +29183,12 @@ var PrototypeManager = class {
   }
   disposables = [];
   // Provider instances
-  codeLensProvider = null;
   peekProvider = null;
   quickPeekProvider = null;
   inlinePeekProvider = null;
   sidePanelProvider = null;
   floatingPanelProvider = null;
   // Registration disposables (for toggling providers)
-  codeLensRegistration = null;
   // Current active mode
   currentMode = "hover";
   // Status bar item for showing current mode
@@ -28550,21 +29197,23 @@ var PrototypeManager = class {
    * Initializes all provider instances.
    */
   initializeProviders() {
-    this.codeLensProvider = new CodeLensExplainProvider();
     this.peekProvider = new PeekExplanationProvider();
     this.quickPeekProvider = new QuickPeekProvider();
     this.inlinePeekProvider = new InlinePeekProvider();
-    this.sidePanelProvider = new SidePanelProvider(this.context.extensionUri);
-    this.floatingPanelProvider = new FloatingPanelProvider(
-      this.context.extensionUri
+    this.sidePanelProvider = new SidePanelProvider(
+      this.context.extensionUri,
+      this.context
     );
-    const sidePanelRegistration = vscode10.window.registerWebviewViewProvider(
+    this.floatingPanelProvider = new FloatingPanelProvider(
+      this.context.extensionUri,
+      this.context
+    );
+    const sidePanelRegistration = vscode11.window.registerWebviewViewProvider(
       SidePanelProvider.viewType,
       this.sidePanelProvider
     );
     this.disposables.push(sidePanelRegistration);
     this.disposables.push(
-      this.codeLensProvider,
       this.peekProvider,
       this.quickPeekProvider,
       this.inlinePeekProvider,
@@ -28578,56 +29227,42 @@ var PrototypeManager = class {
   registerCommands() {
     const commands8 = [
       // Mode selection
-      vscode10.commands.registerCommand(
-        "ghia-ai.prototype.selectMode",
+      vscode11.commands.registerCommand(
+        "pyaid.prototype.selectMode",
         () => this.showModeSelector()
       ),
-      vscode10.commands.registerCommand(
-        "ghia-ai.prototype.setMode",
+      vscode11.commands.registerCommand(
+        "pyaid.prototype.setMode",
         (mode) => this.setMode(mode)
       ),
-      // CodeLens commands
-      vscode10.commands.registerCommand(
-        "ghia-ai.explainCodeLens",
-        (code, context, languageId) => this.codeLensProvider?.handleExplainClick(code, context, languageId)
-      ),
-      vscode10.commands.registerCommand(
-        "ghia-ai.showExplanation",
-        (explanation, code) => this.codeLensProvider?.showExplanation(explanation, code)
-      ),
       // Peek explanation command (opens in VS Code peek view)
-      vscode10.commands.registerCommand(
-        "ghia-ai.peekExplanation",
+      vscode11.commands.registerCommand(
+        "pyaid.peekExplanation",
         () => this.peekProvider?.showPeekExplanation()
       ),
       // Quick peek command
-      vscode10.commands.registerCommand(
-        "ghia-ai.quickPeek",
+      vscode11.commands.registerCommand(
+        "pyaid.quickPeek",
         () => this.quickPeekProvider?.showQuickPeek()
       ),
       // Inline peek command
-      vscode10.commands.registerCommand(
-        "ghia-ai.inlinePeek",
+      vscode11.commands.registerCommand(
+        "pyaid.inlinePeek",
         () => this.inlinePeekProvider?.showInlinePeek()
       ),
       // Side panel command
-      vscode10.commands.registerCommand(
-        "ghia-ai.explainInPanel",
+      vscode11.commands.registerCommand(
+        "pyaid.explainInPanel",
         () => this.sidePanelProvider?.explainCurrentSelection()
       ),
       // Floating panel command
-      vscode10.commands.registerCommand(
-        "ghia-ai.explainFloating",
+      vscode11.commands.registerCommand(
+        "pyaid.explainFloating",
         (code, context) => this.floatingPanelProvider?.showExplanation(code, context)
       ),
-      vscode10.commands.registerCommand(
-        "ghia-ai.openWidePanel",
+      vscode11.commands.registerCommand(
+        "pyaid.openWidePanel",
         () => this.floatingPanelProvider?.openPanel()
-      ),
-      // Toggle commands
-      vscode10.commands.registerCommand(
-        "ghia-ai.prototype.toggleCodeLens",
-        () => this.toggleCodeLens()
       )
     ];
     this.disposables.push(...commands8);
@@ -28637,7 +29272,7 @@ var PrototypeManager = class {
    * Only reads config - does not write back to avoid recursive change events.
    */
   loadConfiguration() {
-    const config = vscode10.workspace.getConfiguration("ghiaAI.prototype");
+    const config = vscode11.workspace.getConfiguration("pyaid.prototype");
     const mode = config.get("mode", "hover");
     this.applyMode(mode);
   }
@@ -28652,13 +29287,6 @@ var PrototypeManager = class {
         detail: "Shows explanations in native VS Code hover. May conflict with other hovers.",
         mode: "hover",
         picked: this.currentMode === "hover"
-      },
-      {
-        label: "$(symbol-method) CodeLens",
-        description: "Inline clickable annotations",
-        detail: "Shows 'Explain' links above functions/classes. Click to see explanation.",
-        mode: "codelens",
-        picked: this.currentMode === "codelens"
       },
       {
         label: "$(eye) Peek View",
@@ -28694,23 +29322,16 @@ var PrototypeManager = class {
         detail: "Opens explanation in a panel next to your code.",
         mode: "floatingpanel",
         picked: this.currentMode === "floatingpanel"
-      },
-      {
-        label: "$(layers) Hybrid",
-        description: "CodeLens + Side Panel",
-        detail: "Combines CodeLens annotations with the side panel for detailed views.",
-        mode: "hybrid",
-        picked: this.currentMode === "hybrid"
       }
     ];
-    const selection = await vscode10.window.showQuickPick(items, {
-      title: "\u{1F9E0} ghia-ai - Select UI Mode",
+    const selection = await vscode11.window.showQuickPick(items, {
+      title: "PyAid - Select UI Mode",
       placeHolder: `Current mode: ${this.currentMode}`
     });
     if (selection) {
       await this.setMode(selection.mode);
-      vscode10.window.showInformationMessage(
-        `ghia-ai mode set to: ${selection.label.replace(/\$\([^)]+\)\s*/, "")}`
+      vscode11.window.showInformationMessage(
+        `PyAid mode set to: ${selection.label.replace(/\$\([^)]+\)\s*/, "")}`
       );
     }
   }
@@ -28719,11 +29340,11 @@ var PrototypeManager = class {
    * Call this for user-initiated mode changes only.
    */
   async setMode(mode) {
-    const config = vscode10.workspace.getConfiguration("ghiaAI.prototype");
+    const config = vscode11.workspace.getConfiguration("pyaid.prototype");
     const storedMode = config.get("mode");
     this.applyMode(mode);
     if (storedMode !== mode) {
-      await config.update("mode", mode, vscode10.ConfigurationTarget.Global);
+      await config.update("mode", mode, vscode11.ConfigurationTarget.Global);
     }
   }
   /**
@@ -28737,10 +29358,6 @@ var PrototypeManager = class {
       case "hover":
         this.updateStatusBar("$(comment-discussion)", "Hover Mode");
         break;
-      case "codelens":
-        this.enableCodeLensMode();
-        this.updateStatusBar("$(symbol-method)", "CodeLens Mode");
-        break;
       case "peek":
         this.enablePeekMode();
         this.updateStatusBar("$(eye)", "Peek Mode");
@@ -28753,60 +29370,31 @@ var PrototypeManager = class {
         break;
       case "sidepanel":
         this.updateStatusBar("$(layout-sidebar-right)", "Side Panel Mode");
-        vscode10.commands.executeCommand("ghia-ai.explanationPanel.focus");
+        vscode11.commands.executeCommand("pyaid.explanationPanel.focus");
         break;
       case "floatingpanel":
         this.updateStatusBar("$(window)", "Floating Panel Mode");
         break;
-      case "hybrid":
-        this.enableCodeLensMode();
-        this.updateStatusBar("$(layers)", "Hybrid Mode");
-        break;
     }
   }
   /**
-   * Enables CodeLens mode by registering the CodeLens provider.
-   */
-  enableCodeLensMode() {
-    if (!this.codeLensProvider) return;
-    this.codeLensRegistration = vscode10.languages.registerCodeLensProvider(
-      [{ scheme: "file" }, { scheme: "untitled" }],
-      this.codeLensProvider
-    );
-  }
-  /**
    * Enables Peek mode.
-   * Peek is now command-based (ghia-ai.peekExplanation) to avoid
+   * Peek is now command-based (pyaid.peekExplanation) to avoid
    * intercepting Go to Definition. No provider registration needed.
    */
   enablePeekMode() {
   }
   /**
-   * Toggles CodeLens on/off regardless of current mode.
-   */
-  toggleCodeLens() {
-    if (this.codeLensRegistration) {
-      this.codeLensRegistration.dispose();
-      this.codeLensRegistration = null;
-      vscode10.window.showInformationMessage("ghia-ai explanations disabled");
-    } else {
-      this.enableCodeLensMode();
-      vscode10.window.showInformationMessage("ghia-ai explanations enabled");
-    }
-  }
-  /**
    * Cleans up all provider registrations.
    */
   cleanupRegistrations() {
-    this.codeLensRegistration?.dispose();
-    this.codeLensRegistration = null;
   }
   /**
    * Updates the status bar item.
    */
   updateStatusBar(icon, tooltip) {
     this.statusBarItem.text = `${icon} AI Mode`;
-    this.statusBarItem.tooltip = `ghia-ai: ${tooltip}
+    this.statusBarItem.tooltip = `PyAid: ${tooltip}
 Click to change mode`;
     this.statusBarItem.show();
   }
@@ -28833,12 +29421,9 @@ Click to change mode`;
       case "floatingpanel":
         await this.floatingPanelProvider?.showExplanation();
         break;
-      case "hybrid":
-        await this.sidePanelProvider?.explainCurrentSelection();
-        break;
       default:
-        vscode10.window.showInformationMessage(
-          `In ${this.currentMode} mode, hover over code or use the CodeLens links.`
+        vscode11.window.showInformationMessage(
+          `In ${this.currentMode} mode, hover or run a PyAid command to see explanations.`
         );
     }
   }
@@ -28848,11 +29433,192 @@ Click to change mode`;
   }
 };
 
-// src/experimental/experimentExtension.ts
+// src/providers/explainDecorationProvider.ts
 var vscode12 = __toESM(require("vscode"));
+var ExplainDecorationProvider = class {
+  constructor(context) {
+    this.context = context;
+    this.decoration = vscode12.window.createTextEditorDecorationType({
+      isWholeLine: true,
+      before: {
+        contentText: "Explain this function/method definition",
+        color: new vscode12.ThemeColor("textLink.foreground"),
+        margin: "0 8px 0 0",
+        fontWeight: "600",
+        textDecoration: "underline",
+        cursor: "pointer",
+        border: "1px solid transparent"
+      }
+    });
+    this.disposables.push(
+      vscode12.window.onDidChangeActiveTextEditor(() => this.refreshActive()),
+      vscode12.window.onDidChangeVisibleTextEditors(() => this.refreshActive()),
+      vscode12.workspace.onDidOpenTextDocument(() => this.refreshActive()),
+      vscode12.workspace.onDidChangeTextDocument((e) => {
+        if (vscode12.window.activeTextEditor?.document === e.document) {
+          this.refreshActive();
+        }
+      }),
+      vscode12.commands.registerCommand(
+        "pyaid.explainFunctionAt",
+        async (...args) => {
+          const raw = Array.isArray(args[0]) ? args[0] : args;
+          const payload = typeof raw === "string" ? JSON.parse(decodeURIComponent(raw)) : raw;
+          const [uriStr, line] = payload ?? [];
+          if (typeof uriStr !== "string" || typeof line !== "number") return;
+          await this.explainAt(vscode12.Uri.parse(uriStr), line);
+        }
+      ),
+      vscode12.languages.registerDocumentLinkProvider(
+        [
+          { scheme: "file", language: "python" },
+          { scheme: "file", language: "javascript" },
+          { scheme: "file", language: "typescript" }
+        ],
+        {
+          provideDocumentLinks: (document) => this.provideLinks(document)
+        }
+      )
+    );
+    this.refreshActive();
+    setTimeout(() => this.refreshActive(), 250);
+  }
+  decoration;
+  disposables = [];
+  extractor = new ContextExtractor();
+  links = [];
+  refreshActive() {
+    this.links = [];
+    const editor = vscode12.window.activeTextEditor;
+    if (!editor) return;
+    const doc = editor.document;
+    const lang = this.mapLanguage(doc.languageId);
+    if (!lang) {
+      editor.setDecorations(this.decoration, []);
+      return;
+    }
+    const ranges = [];
+    for (let i = 0; i < doc.lineCount; i++) {
+      if (!this.isFunctionLine(doc.lineAt(i).text, lang)) continue;
+      const args = encodeURIComponent(JSON.stringify([doc.uri.toString(), i]));
+      const md = new vscode12.MarkdownString(
+        `[Explain this function/method definition](command:pyaid.explainFunctionAt?${args})`
+      );
+      md.isTrusted = true;
+      const decorationLine = i > 0 ? i - 1 : 0;
+      const spacerRange = new vscode12.Range(decorationLine, 0, decorationLine, 0);
+      ranges.push({
+        range: spacerRange,
+        hoverMessage: md
+      });
+      const target = vscode12.Uri.parse(`command:pyaid.explainFunctionAt?${args}`);
+      this.links.push(
+        new vscode12.DocumentLink(
+          new vscode12.Range(i, 0, i, doc.lineAt(i).text.length),
+          target
+        )
+      );
+    }
+    editor.setDecorations(this.decoration, ranges);
+  }
+  mapLanguage(languageId) {
+    if (languageId === "python") return "python";
+    if (languageId === "javascript" || languageId === "typescript") {
+      return languageId;
+    }
+    return null;
+  }
+  provideLinks(document) {
+    const lang = this.mapLanguage(document.languageId);
+    if (!lang) return [];
+    return this.links;
+  }
+  isFunctionLine(line, lang) {
+    const trimmed = line.trim();
+    if (lang === "python") {
+      return /^(?:async\s+def|def)\s+[A-Za-z_]\w*\s*\(.*\)\s*(?:->\s*[^:]+)?\s*:\s*$/.test(
+        trimmed
+      );
+    }
+    if (/^(export\s+)?(async\s+)?function\s+\w+\s*\(/.test(trimmed)) {
+      return true;
+    }
+    if (/^(export\s+)?(const|let|var)\s+\w+\s*=\s*\(.*\)\s*=>/.test(trimmed)) {
+      return true;
+    }
+    if (/^(?:public\s+|private\s+|protected\s+|static\s+|async\s+)*[A-Za-z_$]\w*\s*\(.*\)\s*(?::\s*[^=]+)?\s*\{?$/.test(
+      trimmed
+    )) {
+      if (/^(if|for|while|switch|catch)\b/.test(trimmed)) return false;
+      return true;
+    }
+    return false;
+  }
+  async explainAt(uri, line) {
+    const active = vscode12.window.activeTextEditor;
+    const useActive = active && active.document.uri.toString() === uri.toString();
+    const doc = useActive ? active.document : await vscode12.workspace.openTextDocument(uri);
+    const editor = useActive ? active : await vscode12.window.showTextDocument(doc, { preview: false });
+    const code = this.extractFunctionBlock(doc, line);
+    if (!code) {
+      void vscode12.window.showWarningMessage(
+        "PyAid: Could not find function body to explain."
+      );
+      return;
+    }
+    const context = this.extractor.extract(doc, new vscode12.Position(line, 0)).context;
+    const selection = new vscode12.Selection(line, 0, line, 0);
+    editor.selection = selection;
+    await vscode12.commands.executeCommand("pyaid.explainCode", [code, context]);
+  }
+  extractFunctionBlock(doc, startLine) {
+    const lang = this.mapLanguage(doc.languageId);
+    if (!lang) return null;
+    const startText = doc.lineAt(startLine).text;
+    if (lang === "python") {
+      const indent = startText.match(/^\s*/)?.[0].length ?? 0;
+      let end2 = startLine + 1;
+      while (end2 < doc.lineCount) {
+        const lineText = doc.lineAt(end2).text;
+        if (lineText.trim().length === 0) break;
+        const currentIndent = lineText.match(/^\s*/)?.[0].length ?? 0;
+        if (currentIndent <= indent && !/^\s*#/.test(lineText)) break;
+        end2++;
+      }
+      return doc.getText(new vscode12.Range(startLine, 0, end2, 0)).trim();
+    }
+    let brace = 0;
+    let end = startLine;
+    let foundBrace = false;
+    while (end < doc.lineCount) {
+      const lineText = doc.lineAt(end).text;
+      for (const ch of lineText) {
+        if (ch === "{") {
+          brace++;
+          foundBrace = true;
+        } else if (ch === "}") {
+          brace--;
+        }
+      }
+      if (foundBrace && brace <= 0) {
+        end++;
+        break;
+      }
+      end++;
+    }
+    return doc.getText(new vscode12.Range(startLine, 0, end, 0)).trim();
+  }
+  dispose() {
+    this.disposables.forEach((d) => d.dispose());
+    this.decoration.dispose();
+  }
+};
+
+// src/experimental/experimentExtension.ts
+var vscode14 = __toESM(require("vscode"));
 
 // src/experimental/experimentalHoverProviders.ts
-var vscode11 = __toESM(require("vscode"));
+var vscode13 = __toESM(require("vscode"));
 var NullReturningHoverProvider = class {
   provideHover(document, position, _token) {
     console.log(
@@ -28872,12 +29638,12 @@ var AlwaysReturnHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.trim().length > 0) {
-      const md = new vscode11.MarkdownString();
+      const md = new vscode13.MarkdownString();
       md.appendMarkdown("**\u{1F9EA} Experiment 2: Custom Hover**\n\n");
       md.appendMarkdown(
         `Line ${position.line + 1}, Column ${position.character + 1}`
       );
-      return new vscode11.Hover(md);
+      return new vscode13.Hover(md);
     }
     return null;
   }
@@ -28892,10 +29658,10 @@ var ConditionalHoverProvider = class {
     );
     const trimmedLine = lineText.trim();
     if (trimmedLine.startsWith("function ") || trimmedLine.startsWith("const ") || trimmedLine.startsWith("class ") || trimmedLine.startsWith("export ")) {
-      const md = new vscode11.MarkdownString();
+      const md = new vscode13.MarkdownString();
       md.appendMarkdown("**\u{1F9EA} Experiment 3: Conditional Match**\n\n");
       md.appendMarkdown(`Matched pattern on line ${position.line + 1}`);
-      return new vscode11.Hover(md);
+      return new vscode13.Hover(md);
     }
     return null;
   }
@@ -28909,10 +29675,10 @@ var FirstHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.trim().length > 0) {
-      const md = new vscode11.MarkdownString();
+      const md = new vscode13.MarkdownString();
       md.appendMarkdown("**\u{1F947} First Provider**\n\n");
       md.appendMarkdown("Registered first in the chain.");
-      return new vscode11.Hover(md);
+      return new vscode13.Hover(md);
     }
     return null;
   }
@@ -28926,10 +29692,10 @@ var SecondHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.trim().length > 0) {
-      const md = new vscode11.MarkdownString();
+      const md = new vscode13.MarkdownString();
       md.appendMarkdown("**\u{1F948} Second Provider**\n\n");
       md.appendMarkdown("Registered second in the chain.");
-      return new vscode11.Hover(md);
+      return new vscode13.Hover(md);
     }
     return null;
   }
@@ -28943,10 +29709,10 @@ var ThirdHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.includes("import") || lineText.includes("export")) {
-      const md = new vscode11.MarkdownString();
+      const md = new vscode13.MarkdownString();
       md.appendMarkdown("**\u{1F949} Third Provider (Conditional)**\n\n");
       md.appendMarkdown("Only shows for import/export statements.");
-      return new vscode11.Hover(md);
+      return new vscode13.Hover(md);
     }
     return null;
   }
@@ -28960,10 +29726,10 @@ var HighPriorityHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.trim().length > 0) {
-      const md = new vscode11.MarkdownString();
+      const md = new vscode13.MarkdownString();
       md.appendMarkdown("**\u26A1 High Priority Provider**\n\n");
       md.appendMarkdown("Registered with high priority intent.");
-      return new vscode11.Hover(md);
+      return new vscode13.Hover(md);
     }
     return null;
   }
@@ -28977,21 +29743,21 @@ var AsyncHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.trim().length === 0) return null;
-    await new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(), 500);
+    await new Promise((resolve3) => {
+      const timeout = setTimeout(() => resolve3(), 500);
       _token.onCancellationRequested(() => {
         clearTimeout(timeout);
-        resolve();
+        resolve3();
       });
     });
     if (_token.isCancellationRequested) {
       console.log("[Experiment 6] Cancelled during async wait");
       return null;
     }
-    const md = new vscode11.MarkdownString();
+    const md = new vscode13.MarkdownString();
     md.appendMarkdown("**\u23F1\uFE0F Async Provider**\n\n");
     md.appendMarkdown("This provider waited 500ms before responding.");
-    return new vscode11.Hover(md);
+    return new vscode13.Hover(md);
   }
 };
 var UndefinedReturningHoverProvider = class {
@@ -29013,7 +29779,7 @@ var EmptyContentHoverProvider = class {
     );
     const lineText = document.lineAt(position.line).text;
     if (lineText.trim().length > 0) {
-      return new vscode11.Hover(new vscode11.MarkdownString(""));
+      return new vscode13.Hover(new vscode13.MarkdownString(""));
     }
     return null;
   }
@@ -29087,7 +29853,7 @@ function runExperiment(mode) {
   clearExperiments();
   const providers = getExperimentalProviders(mode);
   providers.forEach((provider, index) => {
-    const disposable = vscode12.languages.registerHoverProvider(
+    const disposable = vscode14.languages.registerHoverProvider(
       HOVER_SELECTOR,
       provider
     );
@@ -29098,7 +29864,7 @@ function runExperiment(mode) {
   });
   currentMode = mode;
   updateStatusBar();
-  vscode12.window.showInformationMessage(
+  vscode14.window.showInformationMessage(
     `\u{1F9EA} Experiment "${mode}" active with ${providers.length} provider(s). Check console for logs.`
   );
 }
@@ -29108,7 +29874,7 @@ function updateStatusBar() {
     statusBarItem.text = `$(beaker) Exp: ${currentMode}`;
     statusBarItem.tooltip = `Hover Experiment Mode: ${currentMode}
 Click to change or stop`;
-    statusBarItem.backgroundColor = new vscode12.ThemeColor(
+    statusBarItem.backgroundColor = new vscode14.ThemeColor(
       "statusBarItem.warningBackground"
     );
   } else {
@@ -29124,7 +29890,7 @@ async function showExperimentMenu() {
       description: "Clear all experimental providers",
       detail: "Removes all experimental hover providers, allowing only VS Code defaults"
     },
-    { kind: vscode12.QuickPickItemKind.Separator, label: "Experiments" },
+    { kind: vscode14.QuickPickItemKind.Separator, label: "Experiments" },
     {
       label: "1. Null Returning",
       description: "Test: Does returning null allow VS Code defaults?",
@@ -29176,14 +29942,14 @@ async function showExperimentMenu() {
       detail: "Returns Hover with empty MarkdownString"
     }
   ];
-  const selection = await vscode12.window.showQuickPick(items, {
+  const selection = await vscode14.window.showQuickPick(items, {
     placeHolder: "Select an experiment to run",
     title: "\u{1F9EA} Hover Provider Experiments"
   });
   if (!selection) return;
   if (selection.label.includes("Stop Experiment")) {
     clearExperiments();
-    vscode12.window.showInformationMessage(
+    vscode14.window.showInformationMessage(
       "\u{1F9EA} Experiment stopped. Only VS Code defaults active."
     );
     return;
@@ -29212,16 +29978,16 @@ function logExperimentStatus() {
   console.log(`Mode: ${currentMode ?? "None"}`);
   console.log(`Active providers: ${experimentDisposables.length}`);
   console.log("===============================");
-  vscode12.window.showInformationMessage(
+  vscode14.window.showInformationMessage(
     `Current experiment: ${currentMode ?? "None"} (${experimentDisposables.length} providers)`
   );
 }
 function activateExperiments(context) {
-  statusBarItem = vscode12.window.createStatusBarItem(
-    vscode12.StatusBarAlignment.Left,
+  statusBarItem = vscode14.window.createStatusBarItem(
+    vscode14.StatusBarAlignment.Left,
     100
   );
-  statusBarItem.command = "ghia-ai.experiment.menu";
+  statusBarItem.command = "pyaid.experiment.menu";
   updateStatusBar();
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
@@ -29237,26 +30003,29 @@ function deactivateExperiments() {
 }
 
 // src/extension.ts
+var ALLOW_WRITE_KEY2 = "pyaid.allowFileWrites";
 var HOVER_SELECTOR2 = [{ scheme: "file" }, { scheme: "untitled" }];
 var stateManager;
 var menuManager;
 var statusBarManager;
 var prototypeManager;
 var hoverRegistrationDisposable;
+var explainDecorationProvider;
 var aiService = new AIService();
 var askStatusBar;
 var panelStatusBar;
 function activate(context) {
-  const hoverProvider = new CodeLensHoverProvider();
+  const hoverProvider = new PyAidHoverProvider();
   const sm = new StateManager(context);
   const mm = new MenuManager(sm, context);
   const sbm = new StatusBarManager(sm, mm);
+  explainDecorationProvider = new ExplainDecorationProvider(context);
   stateManager = sm;
   menuManager = mm;
   statusBarManager = sbm;
-  context.subscriptions.push(sm, mm, sbm, hoverProvider);
+  context.subscriptions.push(sm, mm, sbm, hoverProvider, explainDecorationProvider);
   function registerHover() {
-    return vscode13.languages.registerHoverProvider(
+    return vscode15.languages.registerHoverProvider(
       HOVER_SELECTOR2,
       hoverProvider
     );
@@ -29281,8 +30050,8 @@ function activate(context) {
   context.subscriptions.push(stateChangeSubscription);
   sbm.registerClickHandler(context);
   sbm.show();
-  const commandDisposable = vscode13.commands.registerCommand(
-    "ghia-ai.explainCode",
+  const commandDisposable = vscode15.commands.registerCommand(
+    "pyaid.explainCode",
     (codeOrArgs, ctx) => {
       let code;
       let context2;
@@ -29293,21 +30062,21 @@ function activate(context) {
         code = typeof codeOrArgs === "string" ? codeOrArgs : void 0;
         context2 = ctx;
       }
-      void hoverProvider.explainCode(code, context2);
+      void vscode15.commands.executeCommand("pyaid.explainFloating", code, context2).then(void 0, () => hoverProvider.explainCode(code, context2));
     }
   );
   context.subscriptions.push(commandDisposable);
-  const retryHoverCommandDisposable = vscode13.commands.registerCommand(
-    "ghia-ai.retryHoverExplanation",
+  const retryHoverCommandDisposable = vscode15.commands.registerCommand(
+    "pyaid.retryHoverExplanation",
     (code, context2) => {
       hoverProvider.retryExplanation(code ?? "", context2 ?? "");
     }
   );
   context.subscriptions.push(retryHoverCommandDisposable);
-  const welcomeSubscription = vscode13.workspace.onDidOpenTextDocument(() => {
+  const welcomeSubscription = vscode15.workspace.onDidOpenTextDocument(() => {
     if (sm.hasShownWelcome()) return;
-    const message = "\u{1F44B} Welcome to ghia-ai! Click the icon in the status bar to configure your local Ollama model and get started.";
-    void vscode13.window.showInformationMessage(message, "Configure Now").then((selection) => {
+    const message = "\u{1F44B} Welcome to PyAid! Click the icon in the status bar to configure your local Ollama model and get started.";
+    void vscode15.window.showInformationMessage(message, "Configure Now").then((selection) => {
       void sm.markWelcomeShown();
       if (selection === "Configure Now") {
         mm.showMainMenu();
@@ -29315,16 +30084,16 @@ function activate(context) {
     });
   });
   context.subscriptions.push(welcomeSubscription);
-  const askCommand = vscode13.commands.registerCommand(
-    "ghia-ai.askAI",
+  const askCommand = vscode15.commands.registerCommand(
+    "pyaid.askAI",
     async () => {
-      const question = await vscode13.window.showInputBox({
+      const question = await vscode15.window.showInputBox({
         prompt: "Ask your local model a question",
         placeHolder: "Explain random.sample() with examples"
       });
       if (!question) return;
       const includeFile = /\b(current file|this file|in this file|here)\b/i.test(question);
-      const editor = vscode13.window.activeTextEditor;
+      const editor = vscode15.window.activeTextEditor;
       const doc = editor?.document;
       const MAX_CHARS = 3e4;
       let contextInfo;
@@ -29339,75 +30108,103 @@ function activate(context) {
         };
       }
       try {
-        const answer = await vscode13.window.withProgress(
+        const answer = await vscode15.window.withProgress(
           {
-            location: vscode13.ProgressLocation.Notification,
-            title: "ghia-ai",
+            location: vscode15.ProgressLocation.Notification,
+            title: "PyAid",
             cancellable: false
           },
           () => aiService.ask(question, contextInfo)
         );
-        showAnswerPanel(answer, `ghia-ai: ${question}`);
+        showAnswerPanel(answer, `PyAid: ${question}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        void vscode13.window.showErrorMessage(`ghia-ai: ${msg}`);
+        void vscode15.window.showErrorMessage(`PyAid: ${msg}`);
       }
     }
   );
   context.subscriptions.push(askCommand);
-  askStatusBar = vscode13.window.createStatusBarItem(
-    vscode13.StatusBarAlignment.Right,
+  const writeCommand = vscode15.commands.registerCommand(
+    "pyaid.writeToFile",
+    async (filePath, content, mode = "append") => {
+      try {
+        const targetPath = typeof filePath === "string" && filePath.trim().length > 0 ? filePath.trim() : await vscode15.window.showInputBox({
+          prompt: "Path to write (absolute or workspace-relative)",
+          value: vscode15.window.activeTextEditor?.document.uri.fsPath ?? ""
+        }).then((v) => v?.trim());
+        if (!targetPath) return;
+        const text = typeof content === "string" && content.trim().length > 0 ? content : await vscode15.window.showInputBox({
+          prompt: "Content to write",
+          placeHolder: "Paste or type the text to write",
+          ignoreFocusOut: true,
+          validateInput: (val) => val.length === 0 ? "Content cannot be empty" : void 0
+        });
+        if (!text) return;
+        const allowWrites = context.globalState.get(ALLOW_WRITE_KEY2, false) ?? false;
+        await writeWithConsent(targetPath, text, mode, allowWrites);
+        void vscode15.window.showInformationMessage(
+          `PyAid wrote to ${targetPath}`
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        void vscode15.window.showErrorMessage(`PyAid: ${msg}`);
+      }
+    }
+  );
+  context.subscriptions.push(writeCommand);
+  askStatusBar = vscode15.window.createStatusBarItem(
+    vscode15.StatusBarAlignment.Right,
     90
   );
   askStatusBar.text = "$(comment-discussion) Ask AI";
   askStatusBar.tooltip = "Ask your local model (Python 3 examples)";
-  askStatusBar.command = "ghia-ai.askAI";
+  askStatusBar.command = "pyaid.askAI";
   askStatusBar.show();
   context.subscriptions.push(askStatusBar);
-  panelStatusBar = vscode13.window.createStatusBarItem(
-    vscode13.StatusBarAlignment.Right,
+  panelStatusBar = vscode15.window.createStatusBarItem(
+    vscode15.StatusBarAlignment.Right,
     88
   );
-  panelStatusBar.text = "$(layout-sidebar-right) ghia-ai";
-  panelStatusBar.tooltip = "Open the ghia-ai side panel";
-  panelStatusBar.command = "ghia-ai.openPanel";
+  panelStatusBar.text = "$(layout-sidebar-right) PyAid";
+  panelStatusBar.tooltip = "Open the PyAid side panel";
+  panelStatusBar.command = "pyaid.openPanel";
   panelStatusBar.show();
   context.subscriptions.push(panelStatusBar);
-  const config = vscode13.workspace.getConfiguration("ghiaAI");
+  const config = vscode15.workspace.getConfiguration("pyaid");
   const experimentsEnabled = config.get("enableExperiments", false);
   if (experimentsEnabled) {
     activateExperiments(context);
   }
-  const experimentDisabledMessage = 'Experiments are disabled. Enable them in settings: "ghiaAI.enableExperiments": true';
+  const experimentDisabledMessage = 'Experiments are disabled. Enable them in settings: "pyaid.enableExperiments": true';
   function isExperimentsEnabled() {
-    return vscode13.workspace.getConfiguration("ghiaAI").get("enableExperiments", false);
+    return vscode15.workspace.getConfiguration("pyaid").get("enableExperiments", false);
   }
-  const experimentMenuCommand = vscode13.commands.registerCommand(
-    "ghia-ai.experiment.menu",
+  const experimentMenuCommand = vscode15.commands.registerCommand(
+    "pyaid.experiment.menu",
     () => {
       if (!isExperimentsEnabled()) {
-        void vscode13.window.showInformationMessage(experimentDisabledMessage);
+        void vscode15.window.showInformationMessage(experimentDisabledMessage);
         return;
       }
       void showExperimentMenu();
     }
   );
-  const experimentStopCommand = vscode13.commands.registerCommand(
-    "ghia-ai.experiment.stop",
+  const experimentStopCommand = vscode15.commands.registerCommand(
+    "pyaid.experiment.stop",
     () => {
       if (!isExperimentsEnabled()) {
-        void vscode13.window.showInformationMessage(experimentDisabledMessage);
+        void vscode15.window.showInformationMessage(experimentDisabledMessage);
         return;
       }
       clearExperiments();
-      void vscode13.window.showInformationMessage("\u{1F9EA} Experiment stopped.");
+      void vscode15.window.showInformationMessage("\u{1F9EA} Experiment stopped.");
     }
   );
-  const experimentStatusCommand = vscode13.commands.registerCommand(
-    "ghia-ai.experiment.status",
+  const experimentStatusCommand = vscode15.commands.registerCommand(
+    "pyaid.experiment.status",
     () => {
       if (!isExperimentsEnabled()) {
-        void vscode13.window.showInformationMessage(experimentDisabledMessage);
+        void vscode15.window.showInformationMessage(experimentDisabledMessage);
         return;
       }
       logExperimentStatus();
@@ -29426,11 +30223,11 @@ function activate(context) {
     "empty-content"
   ];
   const experimentRunCommands = experimentModes.map(
-    (mode) => vscode13.commands.registerCommand(
-      `ghia-ai.experiment.run.${mode}`,
+    (mode) => vscode15.commands.registerCommand(
+      `pyaid.experiment.run.${mode}`,
       () => {
         if (!isExperimentsEnabled()) {
-          void vscode13.window.showInformationMessage(experimentDisabledMessage);
+          void vscode15.window.showInformationMessage(experimentDisabledMessage);
           return;
         }
         runExperiment(mode);
@@ -29445,10 +30242,10 @@ function activate(context) {
   );
   prototypeManager = new PrototypeManager(context);
   context.subscriptions.push(prototypeManager);
-  const openPanelCommand = vscode13.commands.registerCommand(
-    "ghia-ai.openPanel",
+  const openPanelCommand = vscode15.commands.registerCommand(
+    "pyaid.openPanel",
     async () => {
-      await vscode13.commands.executeCommand("ghia-ai.openWidePanel");
+      await vscode15.commands.executeCommand("pyaid.openWidePanel");
     }
   );
   context.subscriptions.push(openPanelCommand);
@@ -29473,10 +30270,10 @@ function deactivate() {
   panelStatusBar = void 0;
 }
 function showAnswerPanel(markdown, title) {
-  const panel = vscode13.window.createWebviewPanel(
-    "ghiaAiAnswer",
+  const panel = vscode15.window.createWebviewPanel(
+    "pyaidAnswer",
     title,
-    vscode13.ViewColumn.Beside,
+    vscode15.ViewColumn.Beside,
     { enableScripts: false }
   );
   const html = `<!DOCTYPE html>
